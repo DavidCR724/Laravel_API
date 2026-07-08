@@ -1,12 +1,8 @@
 # API RESTful e-commerce (Laravel 8 + PostgreSQL)
 
-API tipo e-commerce con arquitectura **RESTful** construida en **Laravel 8** y
-respaldada por **PostgreSQL** a través del ORM **Eloquent**.
-
-> Versión anterior: el proyecto nació como una API que trabajaba **en memoria**
-> (sin BD) para probar los endpoints. Esta versión ya está **conectada a una base
-> de datos PostgreSQL** mediante Eloquent, y añade **compras** y **reseñas**.
-> Toda la capa en memoria (Cache como almacén de datos) fue eliminada.
+API tipo e-commerce con arquitectura **RESTful** construida en **Laravel 8**,
+respaldada por **PostgreSQL** (ORM **Eloquent**) y con **autenticación por token**
+mediante **Laravel Sanctum** y control de acceso por **roles**.
 
 ## Entorno / Versiones
 
@@ -14,60 +10,90 @@ respaldada por **PostgreSQL** a través del ORM **Eloquent**.
 |------------|---------|
 | PHP        | **7.4.3** |
 | Laravel    | **8.x** (`laravel/framework ^8.75`) |
+| Sanctum    | `laravel/sanctum ^2.11` (tokens de API) |
 | PostgreSQL | 12+ |
 | Ubuntu     | 20.04 (server) |
 
-> **¿Por qué Laravel 8?** Es la última versión del framework compatible con
-> **PHP 7.4**. Laravel 9+ exige PHP ≥ 8.0.
+> **¿Por qué Laravel 8?** Es la última versión compatible con **PHP 7.4**.
+> Laravel 9+ exige PHP ≥ 8.0.
 
 ## Entidades
 
-- **User**: `id`, `user`, `password` (hasheada), `rol`
+- **User**: `id`, `user`, `password` (hasheada), `rol` (`admin` | `cliente`)
 - **Article** (producto): `id`, `nombre`, `descripcion`, `costo`
-- **Cart**: `id`, `user_id`, `costo_total` (calculado a partir de sus items)
+- **Cart**: `id`, `user_id`, `costo_total`
 - **CartItem**: `id`, `cart_id`, `article_id`
 - **Purchase** (compra): `id`, `user_id`, `total`
-- **PurchaseItem**: `id`, `purchase_id`, `article_id`, `costo` (precio al comprar)
+- **PurchaseItem**: `id`, `purchase_id`, `article_id`, `costo`
 - **Review** (reseña): `id`, `article_id`, `user_id`, `calificacion` (1-5), `descripcion`
 
-### Relaciones
+Las claves foráneas usan borrado en cascada (`ON DELETE CASCADE`).
 
-- Un **User** tiene muchos carritos, compras y reseñas.
-- Un **Article** tiene muchos items de carrito, items de compra y reseñas.
-- Un **Cart** pertenece a un User y tiene muchos **CartItem**.
-- Una **Purchase** pertenece a un User y tiene muchos **PurchaseItem**.
-- Una **Review** pertenece a un Article y a un User (el cliente que comenta).
+## Autenticación y roles (Sanctum)
 
-> Las claves foráneas usan borrado en cascada (`ON DELETE CASCADE`).
+La API usa **Laravel Sanctum**: el usuario inicia sesión y recibe un **token**
+que debe enviar en cada petición protegida con la cabecera:
+
+```
+Authorization: Bearer <token>
+```
+
+> Sanctum **no** es JWT: el token es una cadena aleatoria guardada en la tabla
+> `personal_access_tokens`, por lo que se puede **revocar** al instante (logout).
+
+### Roles y permisos
+
+| Rol | Puede... |
+|-----|----------|
+| **Invitado** (sin token) | Ver productos, pero **sólo** nombre, descripción y costo. |
+| **Cliente** | Lo anterior + ver/crear reseñas, usar el carrito y hacer compras. |
+| **Admin** | Gestionar productos (crear/editar/borrar) y usuarios. |
+
+### Cuentas de ejemplo (creadas por el seeder)
+
+| Usuario | Contraseña | Rol |
+|---------|-----------|-----|
+| `admin` | `admin123` | admin |
+| `cliente` | `cliente123` | cliente |
+
+### Flujo de uso
+
+```bash
+# 1. Login -> devuelve un token
+curl -X POST http://127.0.0.1:8000/api/login \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"user":"cliente","password":"cliente123"}'
+# Respuesta: { "token": "1|abc...", "token_type": "Bearer", "user": {...} }
+
+# 2. Usar el token en rutas protegidas
+curl http://127.0.0.1:8000/api/me \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer 1|abc..."
+```
 
 ## Requisitos
 
-- PHP **7.4** con las extensiones: `mbstring`, `xml`, `curl`, `bcmath`,
+- PHP **7.4** con extensiones: `mbstring`, `xml`, `curl`, `bcmath`,
   **`pdo_pgsql` / `pgsql`**.
 - [Composer](https://getcomposer.org/).
 - **PostgreSQL** 12 o superior.
 
-## Instalación
+## Instalación (local)
 
 ```bash
-# 1. Dependencias
+# 1. Dependencias (instala también Laravel Sanctum)
 composer install
 
 # 2. Entorno
 cp .env.example .env      # en Windows: copy .env.example .env
 
-# 3. Configura la conexión a PostgreSQL en .env
-#    DB_CONNECTION=pgsql
-#    DB_HOST=127.0.0.1
-#    DB_PORT=5432
-#    DB_DATABASE=laravel_api
-#    DB_USERNAME=postgres
-#    DB_PASSWORD=tu_password
+# 3. Configura la conexión a PostgreSQL en .env (DB_*)
 
 # 4. Clave de la aplicación
 php artisan key:generate
 
 # 5. Crea las tablas y carga datos de ejemplo
+#    (migrate también crea la tabla personal_access_tokens de Sanctum)
 php artisan migrate --seed
 ```
 
@@ -79,22 +105,10 @@ php artisan serve
 
 La API queda en `http://127.0.0.1:8000/api`.
 
-### Datos de ejemplo (seeder)
-
-Tras `migrate --seed` se crean:
-
-| Usuario   | Contraseña   | Rol     |
-|-----------|--------------|---------|
-| `admin`   | `admin123`   | admin   |
-| `cliente` | `cliente123` | cliente |
-
-Más 3 artículos, 1 carrito con items, 1 compra y 2 reseñas de ejemplo.
-
 Para reconstruir la base desde cero: `php artisan migrate:fresh --seed`.
 
 ## Despliegue en Ubuntu Server 20.04
 
-Instrucciones para levantar la API en un **Ubuntu Server 20.04** limpio.
 Ubuntu 20.04 incluye **PHP 7.4** y **PostgreSQL** en sus repositorios oficiales.
 
 ### 1. Actualizar el sistema
@@ -123,28 +137,25 @@ composer --version
 
 ### 4. Instalar y preparar PostgreSQL
 
-Instala el servidor y arráncalo:
-
 ```bash
 sudo apt install -y postgresql postgresql-contrib
 sudo systemctl enable --now postgresql
 sudo systemctl status postgresql   # debe aparecer "active (running)"
 ```
 
-Crea la base de datos y el usuario de la aplicación. Abre la consola de
-PostgreSQL con el superusuario `postgres`:
+Crea la base de datos y el usuario. Abre `psql` como superusuario `postgres`:
 
 ```bash
 sudo -u postgres psql
 ```
 
-Y dentro de `psql` ejecuta (cambia la contraseña por una real):
+Dentro de `psql` (cambia la contraseña por una real):
 
 ```sql
 CREATE DATABASE laravel_api;
 CREATE USER laravel_user WITH ENCRYPTED PASSWORD 'cambia_esta_password';
 
--- Que el usuario sea dueño de la BD y pueda crear tablas (migraciones):
+-- Que el usuario pueda crear tablas (migraciones):
 ALTER DATABASE laravel_api OWNER TO laravel_user;
 GRANT ALL PRIVILEGES ON DATABASE laravel_api TO laravel_user;
 \connect laravel_api
@@ -153,20 +164,15 @@ GRANT ALL ON SCHEMA public TO laravel_user;
 \q
 ```
 
-> El `ALTER ... OWNER` y el `GRANT ... ON SCHEMA public` aseguran que el usuario
-> pueda crear las tablas al migrar (necesario en PostgreSQL 15+, e inofensivo en
-> versiones anteriores).
-
-Verifica que el usuario puede conectarse:
+Verifica la conexión del usuario:
 
 ```bash
 psql -h 127.0.0.1 -U laravel_user -d laravel_api -W
-# Escribe la contraseña; si entra a la consola "laravel_api=>", la conexión funciona. Sal con \q
+# Si entra a "laravel_api=>", funciona. Sal con \q
 ```
 
 > Si la conexión por contraseña falla, revisa `/etc/postgresql/12/main/pg_hba.conf`
-> y asegúrate de que las conexiones locales usen el método `md5`; luego
-> `sudo systemctl restart postgresql`.
+> (que las conexiones locales usen `md5`) y `sudo systemctl restart postgresql`.
 
 ### 5. Clonar y configurar el proyecto
 
@@ -181,8 +187,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Ahora edita el archivo `.env` (por ejemplo con `nano .env`) y ajusta la
-conexión a PostgreSQL con los datos del paso 4. El `.env` debe quedar así:
+Edita `.env` (`nano .env`) con los datos del paso 4:
 
 ```env
 APP_NAME="Laravel API"
@@ -207,12 +212,9 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 ```
 
-> Puntos clave del `.env`:
-> - **`DB_CONNECTION=pgsql`** activa PostgreSQL.
-> - **`DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD`** deben coincidir EXACTAMENTE
->   con lo creado en el paso 4.
-> - En un servidor real usa **`APP_ENV=production`** y **`APP_DEBUG=false`**.
-> - No dejes `APP_KEY` vacío: se genera con `php artisan key:generate`.
+> `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` deben coincidir EXACTAMENTE con
+> lo creado en el paso 4. En producción usa `APP_ENV=production` y
+> `APP_DEBUG=false`, y no dejes `APP_KEY` vacío.
 
 ### 6. Crear las tablas y cargar datos (migraciones + seeder)
 
@@ -220,11 +222,11 @@ SESSION_DRIVER=file
 php artisan migrate --seed --force
 ```
 
-Esto crea las 7 tablas (`users`, `articles`, `carts`, `cart_items`,
-`purchases`, `purchase_items`, `reviews`) y carga los datos de ejemplo.
-Para reconstruir todo desde cero: `php artisan migrate:fresh --seed --force`.
+Crea las tablas (`users`, `articles`, `carts`, `cart_items`, `purchases`,
+`purchase_items`, `reviews`, y `personal_access_tokens` de Sanctum) y carga los
+datos de ejemplo (incluidos los usuarios `admin` y `cliente`).
 
-> Si aparece "could not find driver", falta la extensión de PostgreSQL:
+> Si aparece "could not find driver": falta la extensión de PostgreSQL,
 > `sudo apt install -y php7.4-pgsql` y reinicia PHP-FPM/servidor.
 
 ### 7. Permisos de escritura
@@ -238,8 +240,7 @@ sudo chmod -R 775 storage bootstrap/cache
 
 ```bash
 php artisan serve --host=0.0.0.0 --port=8000
-# Abrir el puerto si hay firewall:
-sudo ufw allow 8000/tcp
+sudo ufw allow 8000/tcp   # si hay firewall
 ```
 
 ### 8b. Producción con Nginx + PHP-FPM
@@ -279,83 +280,128 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-En producción, en `.env`: `APP_ENV=production` y `APP_DEBUG=false`.
+## Actualizar un servidor ya desplegado (git pull)
+
+Si el servidor **ya tenía funcionando la versión anterior** (PostgreSQL + Eloquent,
+sin autenticación), para aplicar esta versión (login con Sanctum + roles) NO basta
+con `git pull`, porque se agregó una dependencia (Sanctum) y una tabla nueva. Pasos:
+
+```bash
+cd /var/www/Laravel_API
+
+# 1. Bajar los cambios
+git pull origin main
+
+# 2. Instalar la nueva dependencia (laravel/sanctum, ya está en composer.json)
+composer install
+#    Si Composer avisa que el lock está desactualizado o Sanctum no aparece:
+composer update
+
+# 3. Crear la tabla de tokens de Sanctum (personal_access_tokens).
+#    Solo corre las migraciones PENDIENTES; NO borra datos existentes.
+php artisan migrate --force
+
+# 4. Limpiar cachés (cambiaron auth.php, sanctum.php y las rutas)
+php artisan optimize:clear
+
+# 5. Recargar PHP para que tome el código nuevo
+sudo systemctl reload php7.4-fpm     # si usas Nginx + PHP-FPM
+# (si usas "php artisan serve", detén y vuelve a arrancar el comando)
+```
+
+> - **No** hay que tocar el `.env`: la conexión a la BD no cambia y Sanctum no
+>   necesita variables nuevas.
+> - **No** hace falta re-sembrar: los usuarios `admin` y `cliente` ya existen del
+>   despliegue anterior y ya tienen su `rol`; puedes iniciar sesión de inmediato.
+> - Para reiniciar TODOS los datos desde cero (⚠️ borra lo existente):
+>   `php artisan migrate:fresh --seed --force`.
 
 ## Endpoints
 
-Todos bajo el prefijo `/api` y devuelven **JSON estándar**.
+Todos bajo el prefijo `/api` y devuelven **JSON estándar**. La columna
+**Acceso** indica quién puede usar cada endpoint.
 
-| Método | Ruta                        | Acción                              |
-|--------|-----------------------------|-------------------------------------|
-| GET    | `/api`                      | Estado / índice de la API           |
-| GET    | `/api/users`                | Lista usuarios                      |
-| POST   | `/api/users`                | Crea usuario                        |
-| GET    | `/api/users/{id}`           | Muestra usuario                     |
-| PUT/PATCH | `/api/users/{id}`        | Actualiza usuario                   |
-| DELETE | `/api/users/{id}`           | Elimina usuario                     |
-| GET    | `/api/articles`             | Lista artículos                     |
-| POST   | `/api/articles`             | Crea artículo                       |
-| GET    | `/api/articles/{id}`        | Muestra artículo (con reseñas)      |
-| PUT/PATCH | `/api/articles/{id}`     | Actualiza artículo                  |
-| DELETE | `/api/articles/{id}`        | Elimina artículo                    |
-| GET    | `/api/articles/{id}/reviews`| Reseñas de un artículo              |
-| GET    | `/api/carts`                | Lista carritos                      |
-| POST   | `/api/carts`                | Crea carrito                        |
-| GET    | `/api/carts/{id}`           | Muestra carrito con items           |
-| PUT/PATCH | `/api/carts/{id}`        | Actualiza carrito                   |
-| DELETE | `/api/carts/{id}`           | Elimina carrito (y sus items)       |
-| GET    | `/api/carts/{id}/items`     | Items de un carrito                 |
-| GET    | `/api/cart-items`           | Lista items (`?cart_id=` opcional)  |
-| POST   | `/api/cart-items`           | Agrega artículo a un carrito        |
-| GET    | `/api/cart-items/{id}`      | Muestra item                        |
-| PUT/PATCH | `/api/cart-items/{id}`   | Actualiza item                      |
-| DELETE | `/api/cart-items/{id}`      | Elimina item                        |
-| GET    | `/api/purchases`            | Lista compras                       |
-| POST   | `/api/purchases`            | Genera compra (checkout de carrito) |
-| GET    | `/api/purchases/{id}`       | Muestra compra con items            |
-| DELETE | `/api/purchases/{id}`       | Elimina compra                      |
-| GET    | `/api/reviews`              | Lista reseñas (`?article_id=` opc.) |
-| POST   | `/api/reviews`              | Crea reseña                         |
-| GET    | `/api/reviews/{id}`         | Muestra reseña                      |
-| PUT/PATCH | `/api/reviews/{id}`      | Actualiza reseña                    |
-| DELETE | `/api/reviews/{id}`         | Elimina reseña                      |
+| Método | Ruta | Acción | Acceso |
+|--------|------|--------|--------|
+| POST | `/api/register` | Registro (crea cliente) | Público |
+| POST | `/api/login` | Login (devuelve token) | Público |
+| POST | `/api/logout` | Cierra sesión (revoca token) | Autenticado |
+| GET | `/api/me` | Usuario actual | Autenticado |
+| GET | `/api/articles` | Lista productos | Público* |
+| GET | `/api/articles/{id}` | Muestra producto | Público* |
+| POST | `/api/articles` | Crea producto | **Admin** |
+| PUT/PATCH | `/api/articles/{id}` | Actualiza producto | **Admin** |
+| DELETE | `/api/articles/{id}` | Elimina producto | **Admin** |
+| (CRUD) | `/api/users...` | Gestión de usuarios | **Admin** |
+| GET | `/api/reviews` | Lista reseñas (`?article_id=`) | Autenticado |
+| GET | `/api/reviews/{id}` | Muestra reseña | Autenticado |
+| GET | `/api/articles/{id}/reviews` | Reseñas de un producto | Autenticado |
+| POST | `/api/reviews` | Crea reseña | **Cliente** |
+| PUT/PATCH | `/api/reviews/{id}` | Actualiza reseña | Cliente/Admin |
+| DELETE | `/api/reviews/{id}` | Elimina reseña | Cliente/Admin |
+| (CRUD) | `/api/carts...` | Carrito | **Cliente** |
+| (CRUD) | `/api/cart-items...` | Items del carrito | **Cliente** |
+| GET | `/api/carts/{id}/items` | Items de un carrito | **Cliente** |
+| GET | `/api/purchases` | Lista compras | **Cliente** |
+| POST | `/api/purchases` | Compra (checkout de carrito) | **Cliente** |
+| GET | `/api/purchases/{id}` | Muestra compra | **Cliente** |
+| DELETE | `/api/purchases/{id}` | Elimina compra | **Cliente** |
 
-> Al mover items del carrito, el `costo_total` se **recalcula** solo.
-> Una compra (`POST /api/purchases`) toma los artículos del carrito indicado,
-> los copia a la compra con su costo, calcula el total y vacía el carrito.
+> \* En productos, el **invitado** ve sólo nombre, descripción y costo; un
+> usuario autenticado ve el registro completo (y las reseñas en el detalle).
+>
+> Al mover items del carrito, el `costo_total` se **recalcula** solo. Una compra
+> (`POST /api/purchases`) copia los artículos del carrito indicado, calcula el
+> total y vacía el carrito.
 
 ## Ejemplos (cURL)
 
 ```bash
-# Crear un artículo
+# Registro de un cliente (devuelve token)
+curl -X POST http://127.0.0.1:8000/api/register \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"user":"nuevo","password":"secreto1"}'
+
+# Login como admin (devuelve token)
+curl -X POST http://127.0.0.1:8000/api/login \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"user":"admin","password":"admin123"}'
+
+# Crear un producto (requiere token de ADMIN)
 curl -X POST http://127.0.0.1:8000/api/articles \
   -H "Content-Type: application/json" -H "Accept: application/json" \
+  -H "Authorization: Bearer <token_admin>" \
   -d '{"nombre":"Webcam HD","descripcion":"1080p","costo":599.9}'
 
-# Crear un carrito para el usuario 2 (cliente)
+# Crear carrito (requiere token de CLIENTE)
 curl -X POST http://127.0.0.1:8000/api/carts \
   -H "Content-Type: application/json" -H "Accept: application/json" \
+  -H "Authorization: Bearer <token_cliente>" \
   -d '{"user_id":2}'
 
-# Agregar el artículo 1 al carrito 1
+# Agregar artículo 1 al carrito 1 (CLIENTE)
 curl -X POST http://127.0.0.1:8000/api/cart-items \
   -H "Content-Type: application/json" -H "Accept: application/json" \
+  -H "Authorization: Bearer <token_cliente>" \
   -d '{"cart_id":1,"article_id":1}'
 
-# Generar la compra a partir del carrito 1 (checkout)
+# Checkout del carrito 1 (CLIENTE)
 curl -X POST http://127.0.0.1:8000/api/purchases \
   -H "Content-Type: application/json" -H "Accept: application/json" \
+  -H "Authorization: Bearer <token_cliente>" \
   -d '{"cart_id":1}'
 
-# Crear una reseña del artículo 1 por el usuario 2
+# Crear reseña del artículo 1 (CLIENTE)
 curl -X POST http://127.0.0.1:8000/api/reviews \
   -H "Content-Type: application/json" -H "Accept: application/json" \
+  -H "Authorization: Bearer <token_cliente>" \
   -d '{"article_id":1,"user_id":2,"calificacion":5,"descripcion":"Muy buen producto"}'
 ```
 
 ## Convenciones REST
 
-- Códigos: `200 OK`, `201 Created`, `404 Not Found`, `422 Unprocessable Entity`.
+- Códigos: `200 OK`, `201 Created`, `401 No autenticado`, `403 Sin permiso`,
+  `404 No encontrado`, `422 Datos inválidos`.
 - Respuestas siempre en JSON. Errores de validación:
 
   ```json
@@ -366,19 +412,24 @@ curl -X POST http://127.0.0.1:8000/api/reviews \
   ```
 
 - La contraseña se guarda hasheada (`bcrypt`) y **nunca** se devuelve.
-- Aún **no** hay autenticación (JWT/roles): eso queda para una fase posterior.
+- El acceso se controla con Sanctum (`auth:sanctum`) y el middleware `role`.
 
 ## Estructura relevante
 
 ```
 app/
 ├── Http/
-│   ├── Controllers/   User, Article, Cart, CartItem, Purchase, Review
-│   └── Requests/      Validación (Store/Update * Request)
-└── Models/            User, Article, Cart, CartItem, Purchase, PurchaseItem, Review (Eloquent)
+│   ├── Controllers/   Auth, User, Article, Cart, CartItem, Purchase, Review
+│   ├── Middleware/    CheckRole (autorización por rol)
+│   └── Requests/      Validación (Login/Register + Store/Update * Request)
+└── Models/            User (HasApiTokens), Article, Cart, CartItem,
+                       Purchase, PurchaseItem, Review
+config/
+├── auth.php           Guard por defecto = sanctum
+└── sanctum.php        Configuración de Sanctum
 database/
-├── migrations/        Definición de las 7 tablas
-└── seeders/           DatabaseSeeder (datos de ejemplo)
+├── migrations/        Definición de las tablas
+└── seeders/           DatabaseSeeder (datos + usuarios de ejemplo)
 routes/
-└── api.php            Endpoints RESTful (apiResource)
+└── api.php            Endpoints RESTful con auth y permisos por rol
 ```

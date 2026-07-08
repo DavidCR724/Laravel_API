@@ -9,7 +9,9 @@ return [
     */
 
     'defaults' => [
-        'guard' => 'web',
+        // Guard por defecto: Sanctum (token Bearer). Así $request->user()
+        // resuelve al usuario a partir del token en toda la aplicación.
+        'guard' => 'sanctum',
         'passwords' => 'users',
     ],
 
@@ -22,6 +24,11 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        'sanctum' => [
+            'driver' => 'sanctum',
             'provider' => 'users',
         ],
     ],

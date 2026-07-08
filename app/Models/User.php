@@ -2,17 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Usuario del sistema.
  *
- * Nota: por ahora no se implementa autenticación. El campo `rol` se conserva
- * como simple columna informativa.
+ * - Es "Authenticatable": puede iniciar sesión.
+ * - Usa "HasApiTokens" (Sanctum): puede emitir/revocar tokens de API.
+ *
+ * El campo `rol` define los permisos: 'admin' o 'cliente'. Los "invitados"
+ * son peticiones sin token (no existen como registro).
  */
-class User extends Model
+class User extends Authenticatable
 {
+    use HasApiTokens;
+
     /**
      * @var array<int, string>
      */
@@ -23,7 +29,7 @@ class User extends Model
     ];
 
     /**
-     * Nunca exponemos el hash de la contraseña en las respuestas JSON.
+     * Nunca exponemos el hash de la contraseña ni los tokens en las respuestas.
      *
      * @var array<int, string>
      */
