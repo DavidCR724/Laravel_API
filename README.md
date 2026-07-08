@@ -123,17 +123,50 @@ composer --version
 
 ### 4. Instalar y preparar PostgreSQL
 
+Instala el servidor y arráncalo:
+
 ```bash
 sudo apt install -y postgresql postgresql-contrib
 sudo systemctl enable --now postgresql
+sudo systemctl status postgresql   # debe aparecer "active (running)"
+```
 
-# Crear la base de datos y el usuario de la aplicación
-sudo -u postgres psql <<'SQL'
+Crea la base de datos y el usuario de la aplicación. Abre la consola de
+PostgreSQL con el superusuario `postgres`:
+
+```bash
+sudo -u postgres psql
+```
+
+Y dentro de `psql` ejecuta (cambia la contraseña por una real):
+
+```sql
 CREATE DATABASE laravel_api;
 CREATE USER laravel_user WITH ENCRYPTED PASSWORD 'cambia_esta_password';
+
+-- Que el usuario sea dueño de la BD y pueda crear tablas (migraciones):
+ALTER DATABASE laravel_api OWNER TO laravel_user;
 GRANT ALL PRIVILEGES ON DATABASE laravel_api TO laravel_user;
-SQL
+\connect laravel_api
+GRANT ALL ON SCHEMA public TO laravel_user;
+
+\q
 ```
+
+> El `ALTER ... OWNER` y el `GRANT ... ON SCHEMA public` aseguran que el usuario
+> pueda crear las tablas al migrar (necesario en PostgreSQL 15+, e inofensivo en
+> versiones anteriores).
+
+Verifica que el usuario puede conectarse:
+
+```bash
+psql -h 127.0.0.1 -U laravel_user -d laravel_api -W
+# Escribe la contraseña; si entra a la consola "laravel_api=>", la conexión funciona. Sal con \q
+```
+
+> Si la conexión por contraseña falla, revisa `/etc/postgresql/12/main/pg_hba.conf`
+> y asegúrate de que las conexiones locales usen el método `md5`; luego
+> `sudo systemctl restart postgresql`.
 
 ### 5. Clonar y configurar el proyecto
 
@@ -148,22 +181,51 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Edita `.env` con los datos de la base creada:
+Ahora edita el archivo `.env` (por ejemplo con `nano .env`) y ajusta la
+conexión a PostgreSQL con los datos del paso 4. El `.env` debe quedar así:
 
 ```env
+APP_NAME="Laravel API"
+APP_ENV=production
+APP_KEY=            # lo genera "php artisan key:generate" (no lo borres)
+APP_DEBUG=false
+APP_URL=http://IP_DEL_SERVIDOR
+
+LOG_CHANNEL=stack
+LOG_LEVEL=error
+
+# --- Conexión a PostgreSQL (creada en el paso 4) ---
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=laravel_api
 DB_USERNAME=laravel_user
 DB_PASSWORD=cambia_esta_password
+
+CACHE_DRIVER=file
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
 ```
 
-### 6. Migrar y sembrar
+> Puntos clave del `.env`:
+> - **`DB_CONNECTION=pgsql`** activa PostgreSQL.
+> - **`DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD`** deben coincidir EXACTAMENTE
+>   con lo creado en el paso 4.
+> - En un servidor real usa **`APP_ENV=production`** y **`APP_DEBUG=false`**.
+> - No dejes `APP_KEY` vacío: se genera con `php artisan key:generate`.
+
+### 6. Crear las tablas y cargar datos (migraciones + seeder)
 
 ```bash
 php artisan migrate --seed --force
 ```
+
+Esto crea las 7 tablas (`users`, `articles`, `carts`, `cart_items`,
+`purchases`, `purchase_items`, `reviews`) y carga los datos de ejemplo.
+Para reconstruir todo desde cero: `php artisan migrate:fresh --seed --force`.
+
+> Si aparece "could not find driver", falta la extensión de PostgreSQL:
+> `sudo apt install -y php7.4-pgsql` y reinicia PHP-FPM/servidor.
 
 ### 7. Permisos de escritura
 
