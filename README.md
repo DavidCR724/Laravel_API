@@ -45,8 +45,8 @@ Authorization: Bearer <token>
 
 | Rol | Puede... |
 |-----|----------|
-| **Invitado** (sin token) | Ver productos, pero **sólo** nombre, descripción y costo. |
-| **Cliente** | Lo anterior + ver/crear reseñas, usar el carrito y hacer compras. |
+| **Invitado** (sin token) | Ver productos completos y ver reseñas. |
+| **Cliente** | Lo anterior + **crear** reseñas, usar el carrito y hacer compras. |
 | **Admin** | Gestionar productos (crear/editar/borrar) y usuarios. |
 
 ### Cuentas de ejemplo (creadas por el seeder)
@@ -282,26 +282,32 @@ sudo systemctl reload nginx
 
 ## Actualizar un servidor ya desplegado (git pull)
 
-Si el servidor **ya tenía funcionando la versión anterior** (PostgreSQL + Eloquent,
-sin autenticación), para aplicar esta versión (login con Sanctum + roles) NO basta
-con `git pull`, porque se agregó una dependencia (Sanctum) y una tabla nueva. Pasos:
+### ⚠️ Nota sobre `server.php`
+
+El repo **ya incluye** `server.php` (el que necesita `php artisan serve`; su
+ausencia causaba el error 500). Si en el servidor lo crearon a mano, ese archivo
+está **sin seguimiento de git** y `git pull` fallaría con
+*"untracked working tree files would be overwritten by merge: server.php"*.
+Respáldalo antes de bajar los cambios (paso 1 de abajo).
+
+### Actualización actual (invitados ven productos/reseñas + `server.php`)
+
+Esta versión **sólo cambia código y rutas** (no hay dependencias ni tablas
+nuevas), así que no se necesita `composer install` ni `migrate`:
 
 ```bash
 cd /var/www/Laravel_API
 
-# 1. Bajar los cambios
+# 1. Respalda el server.php que crearon a mano (para que git pull no falle)
+mv server.php server.php.bak
+
+# 2. Bajar los cambios (ahora sí trae el server.php del repo)
 git pull origin main
 
-# 2. Instalar la nueva dependencia (laravel/sanctum, ya está en composer.json)
-composer install
-#    Si Composer avisa que el lock está desactualizado o Sanctum no aparece:
-composer update
+# 3. (Opcional) Comparar ambos server.php; si son iguales, borra el respaldo
+diff server.php server.php.bak && rm server.php.bak
 
-# 3. Crear la tabla de tokens de Sanctum (personal_access_tokens).
-#    Solo corre las migraciones PENDIENTES; NO borra datos existentes.
-php artisan migrate --force
-
-# 4. Limpiar cachés (cambiaron auth.php, sanctum.php y las rutas)
+# 4. Limpiar cachés (cambiaron las rutas)
 php artisan optimize:clear
 
 # 5. Recargar PHP para que tome el código nuevo
@@ -309,12 +315,14 @@ sudo systemctl reload php7.4-fpm     # si usas Nginx + PHP-FPM
 # (si usas "php artisan serve", detén y vuelve a arrancar el comando)
 ```
 
-> - **No** hay que tocar el `.env`: la conexión a la BD no cambia y Sanctum no
->   necesita variables nuevas.
-> - **No** hace falta re-sembrar: los usuarios `admin` y `cliente` ya existen del
->   despliegue anterior y ya tienen su `rol`; puedes iniciar sesión de inmediato.
-> - Para reiniciar TODOS los datos desde cero (⚠️ borra lo existente):
->   `php artisan migrate:fresh --seed --force`.
+### Regla general para futuras actualizaciones
+
+Tras `git pull`, aplica sólo lo que cambió:
+
+- Cambió `composer.json` (dependencia nueva) → `composer install` (o `composer update`).
+- Hay migraciones nuevas → `php artisan migrate --force` (no borra datos).
+- Siempre que cambien config o rutas → `php artisan optimize:clear` y recargar PHP.
+- Reiniciar TODOS los datos desde cero (⚠️ borra lo existente): `php artisan migrate:fresh --seed --force`.
 
 ## Endpoints
 
@@ -327,15 +335,15 @@ Todos bajo el prefijo `/api` y devuelven **JSON estándar**. La columna
 | POST | `/api/login` | Login (devuelve token) | Público |
 | POST | `/api/logout` | Cierra sesión (revoca token) | Autenticado |
 | GET | `/api/me` | Usuario actual | Autenticado |
-| GET | `/api/articles` | Lista productos | Público* |
-| GET | `/api/articles/{id}` | Muestra producto | Público* |
+| GET | `/api/articles` | Lista productos | Público |
+| GET | `/api/articles/{id}` | Muestra producto (con reseñas) | Público |
 | POST | `/api/articles` | Crea producto | **Admin** |
 | PUT/PATCH | `/api/articles/{id}` | Actualiza producto | **Admin** |
 | DELETE | `/api/articles/{id}` | Elimina producto | **Admin** |
 | (CRUD) | `/api/users...` | Gestión de usuarios | **Admin** |
-| GET | `/api/reviews` | Lista reseñas (`?article_id=`) | Autenticado |
-| GET | `/api/reviews/{id}` | Muestra reseña | Autenticado |
-| GET | `/api/articles/{id}/reviews` | Reseñas de un producto | Autenticado |
+| GET | `/api/reviews` | Lista reseñas (`?article_id=`) | Público |
+| GET | `/api/reviews/{id}` | Muestra reseña | Público |
+| GET | `/api/articles/{id}/reviews` | Reseñas de un producto | Público |
 | POST | `/api/reviews` | Crea reseña | **Cliente** |
 | PUT/PATCH | `/api/reviews/{id}` | Actualiza reseña | Cliente/Admin |
 | DELETE | `/api/reviews/{id}` | Elimina reseña | Cliente/Admin |
@@ -347,8 +355,8 @@ Todos bajo el prefijo `/api` y devuelven **JSON estándar**. La columna
 | GET | `/api/purchases/{id}` | Muestra compra | **Cliente** |
 | DELETE | `/api/purchases/{id}` | Elimina compra | **Cliente** |
 
-> \* En productos, el **invitado** ve sólo nombre, descripción y costo; un
-> usuario autenticado ve el registro completo (y las reseñas en el detalle).
+> Los **invitados** (sin token) pueden ver productos completos y reseñas; las
+> acciones de escritura sí requieren sesión y el rol correspondiente.
 >
 > Al mover items del carrito, el `costo_total` se **recalcula** solo. Una compra
 > (`POST /api/purchases`) copia los artículos del carrito indicado, calcula el
@@ -432,4 +440,6 @@ database/
 └── seeders/           DatabaseSeeder (datos + usuarios de ejemplo)
 routes/
 └── api.php            Endpoints RESTful con auth y permisos por rol
+public/index.php       Punto de entrada web (Nginx/Apache)
+server.php             Router para "php artisan serve" (built-in server de PHP)
 ```

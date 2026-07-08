@@ -42,10 +42,12 @@ Route::get('/', static function () {
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 
-// Ver productos: accesible sin token. El controlador limita los campos que
-// ve un invitado (sólo nombre, descripción y costo).
+// Ver productos (completos) y reseñas: accesible sin token (invitados).
 Route::get('articles', [ArticleController::class, 'index']);
 Route::get('articles/{id}', [ArticleController::class, 'show'])->whereNumber('id');
+Route::get('articles/{article}/reviews', [ReviewController::class, 'index']);
+Route::get('reviews', [ReviewController::class, 'index']);
+Route::get('reviews/{id}', [ReviewController::class, 'show'])->whereNumber('id');
 
 /*
 |--------------------------------------------------------------------------
@@ -76,14 +78,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |----------------------------------------------------------------------
-    | Reseñas
+    | Reseñas (ver es público; escribir requiere sesión)
     |----------------------------------------------------------------------
     */
-    // Ver reseñas: cualquier usuario autenticado (cliente o admin).
-    Route::get('reviews', [ReviewController::class, 'index']);
-    Route::get('reviews/{id}', [ReviewController::class, 'show'])->whereNumber('id');
-    Route::get('articles/{article}/reviews', [ReviewController::class, 'index']);
-
     // Crear reseña: solo cliente.
     Route::post('reviews', [ReviewController::class, 'store'])->middleware('role:cliente');
 

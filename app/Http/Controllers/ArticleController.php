@@ -6,25 +6,15 @@ use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
 use App\Models\Article;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ArticleController extends Controller
 {
     /**
-     * GET /api/articles — Lista de productos (ruta pública).
-     *
-     * - Invitado (sin token): sólo ve nombre, descripción y costo.
-     * - Autenticado (cliente/admin): ve el registro completo.
+     * GET /api/articles — Lista de productos (ruta pública, visible para todos).
      */
-    public function index(Request $request): JsonResponse
+    public function index(): JsonResponse
     {
-        $articles = Article::all();
-
-        if ($request->user() === null) {
-            return response()->json(['data' => $this->publicView($articles)]);
-        }
-
-        return response()->json(['data' => $articles]);
+        return response()->json(['data' => Article::all()]);
     }
 
     /**
@@ -41,19 +31,10 @@ class ArticleController extends Controller
     }
 
     /**
-     * GET /api/articles/{id} — Muestra un producto (ruta pública).
-     *
-     * - Invitado: sólo nombre, descripción y costo.
-     * - Autenticado: producto completo con sus reseñas.
+     * GET /api/articles/{id} — Muestra un producto con sus reseñas (público).
      */
-    public function show(Request $request, $id): JsonResponse
+    public function show($id): JsonResponse
     {
-        if ($request->user() === null) {
-            $article = Article::findOrFail($id);
-
-            return response()->json(['data' => $this->publicFields($article)]);
-        }
-
         $article = Article::with('reviews')->findOrFail($id);
 
         return response()->json(['data' => $article]);
@@ -81,32 +62,5 @@ class ArticleController extends Controller
         Article::findOrFail($id)->delete();
 
         return response()->json(['message' => 'Artículo eliminado correctamente.']);
-    }
-
-    /**
-     * Campos que puede ver un invitado: sólo nombre, descripción y costo.
-     *
-     * @return array<string, mixed>
-     */
-    protected function publicFields(Article $article): array
-    {
-        return [
-            'nombre'      => $article->nombre,
-            'descripcion' => $article->descripcion,
-            'costo'       => $article->costo,
-        ];
-    }
-
-    /**
-     * Aplica la vista pública a una colección de productos.
-     *
-     * @param  \Illuminate\Support\Collection<int, Article>  $articles
-     * @return array<int, array<string, mixed>>
-     */
-    protected function publicView($articles): array
-    {
-        return $articles->map(function (Article $article) {
-            return $this->publicFields($article);
-        })->all();
     }
 }
