@@ -9,9 +9,9 @@ return [
     | Default Cache Store
     |--------------------------------------------------------------------------
     |
-    | Este es el "motor" que respalda la persistencia simulada en memoria de la
-    | aplicación. Usamos el driver "file" por defecto para que el estado de las
-    | entidades sobreviva entre distintas peticiones HTTP sin usar una BD.
+    | Configuración estándar de cache del framework. Los datos de la aplicación
+    | NO viven aquí: se persisten en PostgreSQL mediante Eloquent. Esta cache es
+    | sólo infraestructura interna de Laravel (p. ej. el rate limiting).
     |
     */
 

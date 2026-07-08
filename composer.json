@@ -1,8 +1,8 @@
 {
-    "name": "itoaxaca/laravel-sin-bd",
+    "name": "itoaxaca/laravel-api",
     "type": "project",
-    "description": "API RESTful tipo e-commerce que corre completamente en memoria (sin base de datos), usando la fachada Cache de Laravel.",
-    "keywords": ["laravel", "api", "rest", "in-memory", "cache", "e-commerce"],
+    "description": "API RESTful tipo e-commerce en Laravel 8 con PostgreSQL (ORM Eloquent): usuarios, artículos, carritos, compras y reseñas.",
+    "keywords": ["laravel", "api", "rest", "postgresql", "eloquent", "e-commerce"],
     "license": "MIT",
     "require": {
         "php": "^7.4",

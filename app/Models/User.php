@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Modelo de usuario.
+ * Usuario del sistema.
  *
- * IMPORTANTE: esta aplicación NO usa base de datos. La gestión real de usuarios
- * se hace en memoria mediante App\Support\MemoryStore y el UserController.
- *
- * Esta clase existe únicamente porque config/auth.php la referencia como
- * proveedor por defecto del framework; nunca se instancia contra una BD.
+ * Nota: por ahora no se implementa autenticación. El campo `rol` se conserva
+ * como simple columna informativa.
  */
-class User extends Authenticatable
+class User extends Model
 {
     /**
      * @var array<int, string>
@@ -25,9 +23,26 @@ class User extends Authenticatable
     ];
 
     /**
+     * Nunca exponemos el hash de la contraseña en las respuestas JSON.
+     *
      * @var array<int, string>
      */
     protected $hidden = [
         'password',
     ];
+
+    public function carts(): HasMany
+    {
+        return $this->hasMany(Cart::class);
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
 }

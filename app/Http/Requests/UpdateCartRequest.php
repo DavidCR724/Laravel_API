@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Support\MemoryStore;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateCartRequest extends FormRequest
 {
@@ -18,10 +16,8 @@ class UpdateCartRequest extends FormRequest
      */
     public function rules(): array
     {
-        $userIds = MemoryStore::for(MemoryStore::USERS)->ids();
-
         return [
-            'user_id' => ['sometimes', 'required', 'integer', Rule::in($userIds)],
+            'user_id' => ['sometimes', 'required', 'integer', 'exists:users,id'],
         ];
     }
 
@@ -31,7 +27,7 @@ class UpdateCartRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'user_id.in' => 'El usuario indicado no existe.',
+            'user_id.exists' => 'El usuario indicado no existe.',
         ];
     }
 

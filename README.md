@@ -1,9 +1,12 @@
-# API RESTful e-commerce en memoria (Laravel — sin base de datos)
+# API RESTful e-commerce (Laravel 8 + PostgreSQL)
 
-API tipo e-commerce con arquitectura puramente **RESTful** que corre
-**completamente en memoria**, sin conexión a ninguna base de datos. El estado
-persiste entre peticiones HTTP usando la fachada **`Cache`** de Laravel (driver
-`file`), a través de un repositorio en memoria (`App\Support\MemoryStore`).
+API tipo e-commerce con arquitectura **RESTful** construida en **Laravel 8** y
+respaldada por **PostgreSQL** a través del ORM **Eloquent**.
+
+> Versión anterior: el proyecto nació como una API que trabajaba **en memoria**
+> (sin BD) para probar los endpoints. Esta versión ya está **conectada a una base
+> de datos PostgreSQL** mediante Eloquent, y añade **compras** y **reseñas**.
+> Toda la capa en memoria (Cache como almacén de datos) fue eliminada.
 
 ## Entorno / Versiones
 
@@ -11,73 +14,88 @@ persiste entre peticiones HTTP usando la fachada **`Cache`** de Laravel (driver
 |------------|---------|
 | PHP        | **7.4.3** |
 | Laravel    | **8.x** (`laravel/framework ^8.75`) |
-| Ubuntu     | 20.04 |
+| PostgreSQL | 12+ |
+| Ubuntu     | 20.04 (server) |
 
 > **¿Por qué Laravel 8?** Es la última versión del framework compatible con
-> **PHP 7.4**. Laravel 9 en adelante exige PHP ≥ 8.0, por lo que se fija Laravel 8
-> para respetar la versión de PHP indicada.
->
-> No se usa MongoDB ni ningún motor de base de datos: la restricción principal es
-> operar **sin BD**, por lo que la versión de Mongo del entorno no aplica aquí.
+> **PHP 7.4**. Laravel 9+ exige PHP ≥ 8.0.
 
 ## Entidades
 
-- **User**: `id`, `user`, `password` (se guarda hasheada), `rol`
-- **Article**: `id`, `nombre`, `descripcion`, `costo`
+- **User**: `id`, `user`, `password` (hasheada), `rol`
+- **Article** (producto): `id`, `nombre`, `descripcion`, `costo`
 - **Cart**: `id`, `user_id`, `costo_total` (calculado a partir de sus items)
 - **CartItem**: `id`, `cart_id`, `article_id`
+- **Purchase** (compra): `id`, `user_id`, `total`
+- **PurchaseItem**: `id`, `purchase_id`, `article_id`, `costo` (precio al comprar)
+- **Review** (reseña): `id`, `article_id`, `user_id`, `calificacion` (1-5), `descripcion`
+
+### Relaciones
+
+- Un **User** tiene muchos carritos, compras y reseñas.
+- Un **Article** tiene muchos items de carrito, items de compra y reseñas.
+- Un **Cart** pertenece a un User y tiene muchos **CartItem**.
+- Una **Purchase** pertenece a un User y tiene muchos **PurchaseItem**.
+- Una **Review** pertenece a un Article y a un User (el cliente que comenta).
+
+> Las claves foráneas usan borrado en cascada (`ON DELETE CASCADE`).
+
+## Requisitos
+
+- PHP **7.4** con las extensiones: `mbstring`, `xml`, `curl`, `bcmath`,
+  **`pdo_pgsql` / `pgsql`**.
+- [Composer](https://getcomposer.org/).
+- **PostgreSQL** 12 o superior.
 
 ## Instalación
 
-Requiere PHP 7.4 y [Composer](https://getcomposer.org/).
-
 ```bash
-# 1. Instalar dependencias
+# 1. Dependencias
 composer install
 
-# 2. Preparar el archivo de entorno
+# 2. Entorno
 cp .env.example .env      # en Windows: copy .env.example .env
 
-# 3. Generar la clave de la aplicación
+# 3. Configura la conexión a PostgreSQL en .env
+#    DB_CONNECTION=pgsql
+#    DB_HOST=127.0.0.1
+#    DB_PORT=5432
+#    DB_DATABASE=laravel_api
+#    DB_USERNAME=postgres
+#    DB_PASSWORD=tu_password
+
+# 4. Clave de la aplicación
 php artisan key:generate
 
-# 4. Levantar el servidor de desarrollo
+# 5. Crea las tablas y carga datos de ejemplo
+php artisan migrate --seed
+```
+
+Levantar en desarrollo:
+
+```bash
 php artisan serve
 ```
 
-La API queda disponible en `http://127.0.0.1:8000`.
+La API queda en `http://127.0.0.1:8000/api`.
 
-### Persistencia en memoria
+### Datos de ejemplo (seeder)
 
-- El estado se guarda con `Cache` usando el driver **`file`**
-  (`storage/framework/cache`), de modo que **sobrevive entre peticiones HTTP**
-  sin usar base de datos.
-- Al primer arranque se cargan datos de ejemplo automáticamente (usuarios,
-  artículos y un carrito).
-- Para **reiniciar** los datos de ejemplo:
-
-  ```bash
-  php artisan memory:seed
-  ```
-
-- Para **vaciar** por completo el estado en memoria:
-
-  ```bash
-  php artisan cache:clear
-  ```
-
-### Datos de ejemplo precargados
+Tras `migrate --seed` se crean:
 
 | Usuario   | Contraseña   | Rol     |
 |-----------|--------------|---------|
 | `admin`   | `admin123`   | admin   |
 | `cliente` | `cliente123` | cliente |
 
+Más 3 artículos, 1 carrito con items, 1 compra y 2 reseñas de ejemplo.
+
+Para reconstruir la base desde cero: `php artisan migrate:fresh --seed`.
+
 ## Despliegue en Ubuntu Server 20.04
 
-Instrucciones para levantar la API en un **Ubuntu Server 20.04** limpio
-(esta versión de Ubuntu trae **PHP 7.4** en sus repositorios oficiales, que es
-justo la versión requerida).
+Instrucciones para levantar la API en un **Ubuntu Server 20.04** limpio.
+Ubuntu 20.04 incluye **PHP 7.4** y **PostgreSQL** en sus repositorios oficiales.
 
 ### 1. Actualizar el sistema
 
@@ -85,18 +103,14 @@ justo la versión requerida).
 sudo apt update && sudo apt upgrade -y
 ```
 
-### 2. Instalar PHP 7.4 y las extensiones necesarias
+### 2. Instalar PHP 7.4 y extensiones (incluida la de PostgreSQL)
 
 ```bash
 sudo apt install -y php7.4-cli php7.4-common php7.4-mbstring \
-  php7.4-xml php7.4-curl php7.4-zip php7.4-bcmath unzip git
+  php7.4-xml php7.4-curl php7.4-bcmath php7.4-pgsql unzip git
 
-# Verifica la versión (debe ser 7.4.x)
-php -v
+php -v   # debe ser 7.4.x
 ```
-
-> No se requieren extensiones de base de datos (mysql, pgsql, mongodb): la API
-> corre **en memoria** usando la cache en disco.
 
 ### 3. Instalar Composer
 
@@ -107,47 +121,72 @@ sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
 composer --version
 ```
 
-### 4. Clonar el proyecto
+### 4. Instalar y preparar PostgreSQL
 
 ```bash
-cd /var/www        # o el directorio que prefieras
-git clone https://github.com/DavidCR724/Laravel_API.git
-cd Laravel_API
+sudo apt install -y postgresql postgresql-contrib
+sudo systemctl enable --now postgresql
+
+# Crear la base de datos y el usuario de la aplicación
+sudo -u postgres psql <<'SQL'
+CREATE DATABASE laravel_api;
+CREATE USER laravel_user WITH ENCRYPTED PASSWORD 'cambia_esta_password';
+GRANT ALL PRIVILEGES ON DATABASE laravel_api TO laravel_user;
+SQL
 ```
 
-### 5. Instalar dependencias y configurar
+### 5. Clonar y configurar el proyecto
 
 ```bash
+cd /var/www
+git clone https://github.com/DavidCR724/Laravel_API.git
+cd Laravel_API
+
 composer install --no-dev --optimize-autoloader
 
 cp .env.example .env
 php artisan key:generate
 ```
 
-### 6. Permisos de escritura (la persistencia usa `storage/`)
+Edita `.env` con los datos de la base creada:
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=laravel_api
+DB_USERNAME=laravel_user
+DB_PASSWORD=cambia_esta_password
+```
+
+### 6. Migrar y sembrar
+
+```bash
+php artisan migrate --seed --force
+```
+
+### 7. Permisos de escritura
 
 ```bash
 sudo chown -R www-data:www-data storage bootstrap/cache
 sudo chmod -R 775 storage bootstrap/cache
 ```
 
-### 7a. Arranque rápido (desarrollo / pruebas)
+### 8a. Arranque rápido (pruebas)
 
 ```bash
-# Escucha en todas las interfaces para poder acceder desde fuera del servidor
 php artisan serve --host=0.0.0.0 --port=8000
+# Abrir el puerto si hay firewall:
+sudo ufw allow 8000/tcp
 ```
 
-La API queda en `http://IP_DEL_SERVIDOR:8000/api`.
-Si usas firewall, abre el puerto: `sudo ufw allow 8000/tcp`.
-
-### 7b. Producción con Nginx + PHP-FPM (recomendado)
+### 8b. Producción con Nginx + PHP-FPM
 
 ```bash
 sudo apt install -y nginx php7.4-fpm
 ```
 
-Crea el sitio en `/etc/nginx/sites-available/laravel_api`:
+Sitio en `/etc/nginx/sites-available/laravel_api`:
 
 ```nginx
 server {
@@ -172,64 +211,60 @@ server {
 }
 ```
 
-Activa el sitio y recarga Nginx:
-
 ```bash
 sudo ln -s /etc/nginx/sites-available/laravel_api /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-La API queda accesible en `http://IP_DEL_SERVIDOR/api`.
-
-### Notas de despliegue
-
-- Para reiniciar los datos de ejemplo en el servidor:
-  `php artisan memory:seed`
-- Para vaciar el estado en memoria: `php artisan cache:clear`
-- En producción, ajusta en `.env`: `APP_ENV=production` y `APP_DEBUG=false`.
+En producción, en `.env`: `APP_ENV=production` y `APP_DEBUG=false`.
 
 ## Endpoints
 
 Todos bajo el prefijo `/api` y devuelven **JSON estándar**.
 
-| Método | Ruta                       | Acción                         |
-|--------|----------------------------|--------------------------------|
-| GET    | `/api`                     | Estado / índice de la API      |
-| GET    | `/api/users`               | Lista usuarios                 |
-| POST   | `/api/users`               | Crea usuario                   |
-| GET    | `/api/users/{id}`          | Muestra usuario                |
-| PUT/PATCH | `/api/users/{id}`       | Actualiza usuario              |
-| DELETE | `/api/users/{id}`          | Elimina usuario                |
-| GET    | `/api/articles`            | Lista artículos                |
-| POST   | `/api/articles`            | Crea artículo                  |
-| GET    | `/api/articles/{id}`       | Muestra artículo               |
-| PUT/PATCH | `/api/articles/{id}`    | Actualiza artículo             |
-| DELETE | `/api/articles/{id}`       | Elimina artículo               |
-| GET    | `/api/carts`               | Lista carritos                 |
-| POST   | `/api/carts`               | Crea carrito                   |
-| GET    | `/api/carts/{id}`          | Muestra carrito con sus items  |
-| PUT/PATCH | `/api/carts/{id}`       | Actualiza carrito              |
-| DELETE | `/api/carts/{id}`          | Elimina carrito (y sus items)  |
-| GET    | `/api/carts/{id}/items`    | Items de un carrito            |
-| GET    | `/api/cart-items`          | Lista items (`?cart_id=` opc.) |
-| POST   | `/api/cart-items`          | Agrega artículo a un carrito   |
-| GET    | `/api/cart-items/{id}`     | Muestra item                   |
-| PUT/PATCH | `/api/cart-items/{id}`  | Actualiza item                 |
-| DELETE | `/api/cart-items/{id}`     | Elimina item                   |
+| Método | Ruta                        | Acción                              |
+|--------|-----------------------------|-------------------------------------|
+| GET    | `/api`                      | Estado / índice de la API           |
+| GET    | `/api/users`                | Lista usuarios                      |
+| POST   | `/api/users`                | Crea usuario                        |
+| GET    | `/api/users/{id}`           | Muestra usuario                     |
+| PUT/PATCH | `/api/users/{id}`        | Actualiza usuario                   |
+| DELETE | `/api/users/{id}`           | Elimina usuario                     |
+| GET    | `/api/articles`             | Lista artículos                     |
+| POST   | `/api/articles`             | Crea artículo                       |
+| GET    | `/api/articles/{id}`        | Muestra artículo (con reseñas)      |
+| PUT/PATCH | `/api/articles/{id}`     | Actualiza artículo                  |
+| DELETE | `/api/articles/{id}`        | Elimina artículo                    |
+| GET    | `/api/articles/{id}/reviews`| Reseñas de un artículo              |
+| GET    | `/api/carts`                | Lista carritos                      |
+| POST   | `/api/carts`                | Crea carrito                        |
+| GET    | `/api/carts/{id}`           | Muestra carrito con items           |
+| PUT/PATCH | `/api/carts/{id}`        | Actualiza carrito                   |
+| DELETE | `/api/carts/{id}`           | Elimina carrito (y sus items)       |
+| GET    | `/api/carts/{id}/items`     | Items de un carrito                 |
+| GET    | `/api/cart-items`           | Lista items (`?cart_id=` opcional)  |
+| POST   | `/api/cart-items`           | Agrega artículo a un carrito        |
+| GET    | `/api/cart-items/{id}`      | Muestra item                        |
+| PUT/PATCH | `/api/cart-items/{id}`   | Actualiza item                      |
+| DELETE | `/api/cart-items/{id}`      | Elimina item                        |
+| GET    | `/api/purchases`            | Lista compras                       |
+| POST   | `/api/purchases`            | Genera compra (checkout de carrito) |
+| GET    | `/api/purchases/{id}`       | Muestra compra con items            |
+| DELETE | `/api/purchases/{id}`       | Elimina compra                      |
+| GET    | `/api/reviews`              | Lista reseñas (`?article_id=` opc.) |
+| POST   | `/api/reviews`              | Crea reseña                         |
+| GET    | `/api/reviews/{id}`         | Muestra reseña                      |
+| PUT/PATCH | `/api/reviews/{id}`      | Actualiza reseña                    |
+| DELETE | `/api/reviews/{id}`         | Elimina reseña                      |
 
-> Al agregar/actualizar/eliminar items, el `costo_total` del carrito se
-> **recalcula automáticamente** sumando el `costo` de los artículos.
+> Al mover items del carrito, el `costo_total` se **recalcula** solo.
+> Una compra (`POST /api/purchases`) toma los artículos del carrito indicado,
+> los copia a la compra con su costo, calcula el total y vacía el carrito.
 
 ## Ejemplos (cURL)
 
 ```bash
-# Crear un usuario
-curl -X POST http://127.0.0.1:8000/api/users \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
-  -d '{"user":"nuevo","password":"secreto1","rol":"cliente"}'
-
 # Crear un artículo
 curl -X POST http://127.0.0.1:8000/api/articles \
   -H "Content-Type: application/json" -H "Accept: application/json" \
@@ -245,15 +280,21 @@ curl -X POST http://127.0.0.1:8000/api/cart-items \
   -H "Content-Type: application/json" -H "Accept: application/json" \
   -d '{"cart_id":1,"article_id":1}'
 
-# Ver el carrito con sus items y total recalculado
-curl http://127.0.0.1:8000/api/carts/1 -H "Accept: application/json"
+# Generar la compra a partir del carrito 1 (checkout)
+curl -X POST http://127.0.0.1:8000/api/purchases \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"cart_id":1}'
+
+# Crear una reseña del artículo 1 por el usuario 2
+curl -X POST http://127.0.0.1:8000/api/reviews \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"article_id":1,"user_id":2,"calificacion":5,"descripcion":"Muy buen producto"}'
 ```
 
 ## Convenciones REST
 
-- Códigos de estado: `200 OK`, `201 Created`, `404 Not Found`,
-  `422 Unprocessable Entity` (validación).
-- Respuestas siempre en JSON. Los errores de validación siguen el formato:
+- Códigos: `200 OK`, `201 Created`, `404 Not Found`, `422 Unprocessable Entity`.
+- Respuestas siempre en JSON. Errores de validación:
 
   ```json
   {
@@ -262,21 +303,20 @@ curl http://127.0.0.1:8000/api/carts/1 -H "Accept: application/json"
   }
   ```
 
-- La contraseña se guarda hasheada (`bcrypt`) y **nunca** se devuelve en las
-  respuestas.
+- La contraseña se guarda hasheada (`bcrypt`) y **nunca** se devuelve.
+- Aún **no** hay autenticación (JWT/roles): eso queda para una fase posterior.
 
 ## Estructura relevante
 
 ```
 app/
 ├── Http/
-│   ├── Controllers/   UserController, ArticleController, CartController, CartItemController
+│   ├── Controllers/   User, Article, Cart, CartItem, Purchase, Review
 │   └── Requests/      Validación (Store/Update * Request)
-├── Services/
-│   └── CartService.php   Cálculo de totales y carrito con items
-└── Support/
-    ├── MemoryStore.php   Repositorio en memoria (fachada Cache)
-    └── MemorySeeder.php  Datos de ejemplo iniciales
+└── Models/            User, Article, Cart, CartItem, Purchase, PurchaseItem, Review (Eloquent)
+database/
+├── migrations/        Definición de las 7 tablas
+└── seeders/           DatabaseSeeder (datos de ejemplo)
 routes/
 └── api.php            Endpoints RESTful (apiResource)
 ```

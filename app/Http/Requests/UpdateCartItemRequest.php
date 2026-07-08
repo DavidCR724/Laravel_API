@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Support\MemoryStore;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateCartItemRequest extends FormRequest
 {
@@ -18,12 +16,9 @@ class UpdateCartItemRequest extends FormRequest
      */
     public function rules(): array
     {
-        $cartIds    = MemoryStore::for(MemoryStore::CARTS)->ids();
-        $articleIds = MemoryStore::for(MemoryStore::ARTICLES)->ids();
-
         return [
-            'cart_id'    => ['sometimes', 'required', 'integer', Rule::in($cartIds)],
-            'article_id' => ['sometimes', 'required', 'integer', Rule::in($articleIds)],
+            'cart_id'    => ['sometimes', 'required', 'integer', 'exists:carts,id'],
+            'article_id' => ['sometimes', 'required', 'integer', 'exists:articles,id'],
         ];
     }
 
@@ -33,8 +28,8 @@ class UpdateCartItemRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'cart_id.in'    => 'El carrito indicado no existe.',
-            'article_id.in' => 'El artículo indicado no existe.',
+            'cart_id.exists'    => 'El carrito indicado no existe.',
+            'article_id.exists' => 'El artículo indicado no existe.',
         ];
     }
 

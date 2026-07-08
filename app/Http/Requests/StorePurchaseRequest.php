@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreCartItemRequest extends FormRequest
+class StorePurchaseRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -12,13 +12,14 @@ class StoreCartItemRequest extends FormRequest
     }
 
     /**
+     * Una compra se genera a partir de un carrito existente (checkout).
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'cart_id'    => ['required', 'integer', 'exists:carts,id'],
-            'article_id' => ['required', 'integer', 'exists:articles,id'],
+            'cart_id' => ['required', 'integer', 'exists:carts,id'],
         ];
     }
 
@@ -28,8 +29,7 @@ class StoreCartItemRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'cart_id.exists'    => 'El carrito indicado no existe.',
-            'article_id.exists' => 'El artículo indicado no existe.',
+            'cart_id.exists' => 'El carrito indicado no existe.',
         ];
     }
 
@@ -39,8 +39,7 @@ class StoreCartItemRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'cart_id'    => 'carrito',
-            'article_id' => 'artículo',
+            'cart_id' => 'carrito',
         ];
     }
 }

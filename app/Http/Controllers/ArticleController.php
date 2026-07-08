@@ -4,25 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
-use App\Support\MemoryStore;
+use App\Models\Article;
 use Illuminate\Http\JsonResponse;
 
 class ArticleController extends Controller
 {
-    /** @var MemoryStore */
-    protected $articles;
-
-    public function __construct()
-    {
-        $this->articles = MemoryStore::for(MemoryStore::ARTICLES);
-    }
-
     /**
      * GET /api/articles — Lista todos los artículos.
      */
     public function index(): JsonResponse
     {
-        return response()->json(['data' => $this->articles->all()]);
+        return response()->json(['data' => Article::all()]);
     }
 
     /**
@@ -30,10 +22,7 @@ class ArticleController extends Controller
      */
     public function store(StoreArticleRequest $request): JsonResponse
     {
-        $data = $request->validated();
-        $data['costo'] = round((float) $data['costo'], 2);
-
-        $article = $this->articles->create($data);
+        $article = Article::create($request->validated());
 
         return response()->json([
             'message' => 'Artículo creado correctamente.',
@@ -42,35 +31,22 @@ class ArticleController extends Controller
     }
 
     /**
-     * GET /api/articles/{article} — Muestra un artículo.
+     * GET /api/articles/{id} — Muestra un artículo con sus reseñas.
      */
     public function show($id): JsonResponse
     {
-        $article = $this->articles->find($id);
-
-        if ($article === null) {
-            abort(JsonResponse::HTTP_NOT_FOUND, 'Artículo no encontrado.');
-        }
+        $article = Article::with('reviews')->findOrFail($id);
 
         return response()->json(['data' => $article]);
     }
 
     /**
-     * PUT/PATCH /api/articles/{article} — Actualiza un artículo.
+     * PUT/PATCH /api/articles/{id} — Actualiza un artículo.
      */
     public function update(UpdateArticleRequest $request, $id): JsonResponse
     {
-        if (! $this->articles->exists($id)) {
-            abort(JsonResponse::HTTP_NOT_FOUND, 'Artículo no encontrado.');
-        }
-
-        $data = $request->validated();
-
-        if (isset($data['costo'])) {
-            $data['costo'] = round((float) $data['costo'], 2);
-        }
-
-        $article = $this->articles->update($id, $data);
+        $article = Article::findOrFail($id);
+        $article->update($request->validated());
 
         return response()->json([
             'message' => 'Artículo actualizado correctamente.',
@@ -79,13 +55,11 @@ class ArticleController extends Controller
     }
 
     /**
-     * DELETE /api/articles/{article} — Elimina un artículo.
+     * DELETE /api/articles/{id} — Elimina un artículo.
      */
     public function destroy($id): JsonResponse
     {
-        if (! $this->articles->delete($id)) {
-            abort(JsonResponse::HTTP_NOT_FOUND, 'Artículo no encontrado.');
-        }
+        Article::findOrFail($id)->delete();
 
         return response()->json(['message' => 'Artículo eliminado correctamente.']);
     }

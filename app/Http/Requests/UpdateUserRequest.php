@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Support\MemoryStore;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -13,40 +13,29 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
-     * Reglas para actualización parcial (PUT/PATCH): todos los campos usan
-     * "sometimes" para permitir enviar sólo lo que se desea cambiar.
+     * Reglas para actualización parcial: todos los campos usan "sometimes".
      *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
+        $userId = $this->route('user');
+
         return [
-            'user'     => ['sometimes', 'required', 'string', 'max:255', $this->uniqueUsername()],
+            'user'     => ['sometimes', 'required', 'string', 'max:255', Rule::unique('users', 'user')->ignore($userId)],
             'password' => ['sometimes', 'required', 'string', 'min:6', 'max:255'],
             'rol'      => ['sometimes', 'required', 'string', 'max:50'],
         ];
     }
 
     /**
-     * Nombre de usuario único ignorando el propio registro que se edita.
+     * @return array<string, string>
      */
-    protected function uniqueUsername(): \Closure
+    public function messages(): array
     {
-        $currentId = (int) $this->route('user');
-
-        return static function ($attribute, $value, $fail) use ($currentId) {
-            foreach (MemoryStore::for(MemoryStore::USERS)->all() as $user) {
-                if ((int) $user['id'] === $currentId) {
-                    continue;
-                }
-
-                if (isset($user['user']) && strcasecmp((string) $user['user'], (string) $value) === 0) {
-                    $fail('El nombre de usuario ya está en uso.');
-
-                    return;
-                }
-            }
-        };
+        return [
+            'user.unique' => 'El nombre de usuario ya está en uso.',
+        ];
     }
 
     /**

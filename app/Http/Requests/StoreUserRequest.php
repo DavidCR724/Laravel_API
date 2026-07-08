@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Support\MemoryStore;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreUserRequest extends FormRequest
@@ -18,26 +17,20 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user'     => ['required', 'string', 'max:255', $this->uniqueUsername()],
+            'user'     => ['required', 'string', 'max:255', 'unique:users,user'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'rol'      => ['required', 'string', 'max:50'],
         ];
     }
 
     /**
-     * Regla de nombre de usuario único contra el almacén en memoria.
+     * @return array<string, string>
      */
-    protected function uniqueUsername(): \Closure
+    public function messages(): array
     {
-        return static function ($attribute, $value, $fail) {
-            foreach (MemoryStore::for(MemoryStore::USERS)->all() as $user) {
-                if (isset($user['user']) && strcasecmp((string) $user['user'], (string) $value) === 0) {
-                    $fail('El nombre de usuario ya está en uso.');
-
-                    return;
-                }
-            }
-        };
+        return [
+            'user.unique' => 'El nombre de usuario ya está en uso.',
+        ];
     }
 
     /**
