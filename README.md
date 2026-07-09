@@ -328,6 +328,22 @@ Tras `git pull`, aplica sólo lo que cambió:
 - Siempre que cambien config o rutas → `php artisan optimize:clear` y recargar PHP.
 - Reiniciar TODOS los datos desde cero (⚠️ borra lo existente): `php artisan migrate:fresh --seed --force`.
 
+## Front-end (React)
+
+En la carpeta [`frontend/`](frontend/) hay un front sencillo en **React + Vite**
+para probar la API desde el navegador. Tiene un login con un **campo para la
+dirección de la API** (el servidor corre en otra máquina) y corre en
+**http://localhost:8000**, que es el **origen permitido** por el CORS.
+
+```bash
+cd frontend
+npm install
+npm run web     # http://localhost:8000
+```
+
+La API (Laravel) ya trae CORS configurado en [`config/cors.php`](config/cors.php)
+permitiendo el origen `http://localhost:8000`. Ver [frontend/README.md](frontend/README.md).
+
 ## Endpoints
 
 Todos bajo el prefijo `/api` y devuelven **JSON estándar**. La columna
