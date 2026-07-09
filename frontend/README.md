@@ -1,8 +1,17 @@
 # Front (React + Vite) para la API de Laravel
 
-Front **muy sencillo** para probar la API. Incluye un **login** con un campo para
-escribir la **dirección de la API** (porque el servidor corre en otra máquina, la
-del Ubuntu Server) y una pantalla para cargar productos.
+Front **muy sencillo** para probar la API según el rol:
+
+- **Barra superior:** campo para la **dirección de la API** (el servidor corre en
+  otra máquina) y, en la esquina, el botón de **Iniciar sesión** / cerrar sesión.
+- **Invitado (sin sesión):** ve el catálogo de **productos** y las **reseñas**
+  (peticiones GET públicas).
+- **Cliente:** además puede **agregar un producto al carrito** y **comprar**.
+- **Admin:** panel básico para **crear/editar/borrar productos** y **gestionar
+  usuarios**.
+- **Manejo de errores:** las respuestas 401/403 (p. ej. un invitado que intenta
+  ver `/api/users` o hacer un POST) se **capturan** y se muestran en un banner,
+  sin romper la aplicación.
 
 Corre en **http://localhost:8000**, que es el **origen permitido** por el CORS de
 la API (ver `config/cors.php` en la raíz del proyecto).
@@ -29,12 +38,13 @@ Abre el navegador en **http://localhost:8000**.
 
 1. En **Dirección de la API**, escribe dónde corre la API del servidor Ubuntu,
    por ejemplo `http://192.168.1.50:8000` (o `http://IP_DEL_SERVIDOR` si usa
-   Nginx en el puerto 80).
-2. Ingresa usuario y contraseña (por defecto `cliente / cliente123`) y pulsa
-   **Iniciar sesión**. Se guarda el token (dura 5 minutos).
-3. Pulsa **Cargar productos** para hacer un `GET /api/articles`.
-4. **Comprobar sesión (/me)** hace una petición protegida; si el token expiró
-   (más de 5 min) responderá 401 y volverás al login.
+   Nginx en el puerto 80). Sin iniciar sesión ya se ven productos y reseñas.
+2. Pulsa **Iniciar sesión** (esquina superior). Cuentas de ejemplo:
+   `admin / admin123` y `cliente / cliente123`. El token dura **5 minutos**.
+3. Como **cliente**: elige un producto, **Agregar al carrito** y **Comprar**.
+4. Como **admin**: crea/edita/borra productos y crea/borra usuarios.
+5. **Demo de errores:** el botón *Intentar ver /api/users* muestra cómo se
+   captura el 401 (invitado) o 403 (cliente) sin romper la app.
 
 ## ¿Por qué CORS?
 
