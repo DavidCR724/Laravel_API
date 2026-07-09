@@ -33,11 +33,13 @@ return [
     | Expiration Minutes
     |--------------------------------------------------------------------------
     |
-    | Minutos de validez de un token. null = no expira (hasta hacer logout).
+    | Minutos de validez de un token de sesión. Pasado ese tiempo desde su
+    | creación, el token deja de funcionar (habrá que volver a iniciar sesión).
+    | Aquí: 5 minutos como máximo.
     |
     */
 
-    'expiration' => null,
+    'expiration' => 5,
 
     /*
     |--------------------------------------------------------------------------
