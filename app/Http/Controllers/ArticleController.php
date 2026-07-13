@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
+use App\Http\Requests\UpdateStockRequest;
 use App\Models\Article;
 use Illuminate\Http\JsonResponse;
 
@@ -62,5 +63,30 @@ class ArticleController extends Controller
         Article::findOrFail($id)->delete();
 
         return response()->json(['message' => 'Artículo eliminado correctamente.']);
+    }
+
+    /**
+     * PATCH /api/articles/{id}/stock — Control de stock específico (solo admin).
+     *
+     * Envía "stock" para fijar el valor absoluto, o "ajuste" para sumar/restar
+     * al stock actual (el resultado nunca baja de 0).
+     */
+    public function updateStock(UpdateStockRequest $request, $id): JsonResponse
+    {
+        $article = Article::findOrFail($id);
+        $data    = $request->validated();
+
+        if (array_key_exists('stock', $data)) {
+            $article->stock = (int) $data['stock'];
+        } else {
+            $article->stock = max(0, $article->stock + (int) $data['ajuste']);
+        }
+
+        $article->save();
+
+        return response()->json([
+            'message' => 'Stock actualizado correctamente.',
+            'data'    => $article,
+        ]);
     }
 }

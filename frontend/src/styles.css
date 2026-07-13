@@ -195,6 +195,11 @@ button.link {
   justify-content: space-between;
 }
 
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .badge {
   display: inline-block;
   background: var(--accent);

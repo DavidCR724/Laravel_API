@@ -17,9 +17,11 @@ class StoreArticleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre'      => ['required', 'string', 'max:255'],
-            'descripcion' => ['required', 'string', 'max:2000'],
-            'costo'       => ['required', 'numeric', 'min:0'],
+            'nombre'          => ['required', 'string', 'max:255'],
+            'descripcion'     => ['required', 'string', 'max:2000'],
+            'costo'           => ['required', 'numeric', 'min:0'],
+            'caracteristicas' => ['sometimes', 'nullable', 'array'],
+            'stock'           => ['sometimes', 'nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -29,9 +31,11 @@ class StoreArticleRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'nombre'      => 'nombre',
-            'descripcion' => 'descripción',
-            'costo'       => 'costo',
+            'nombre'          => 'nombre',
+            'descripcion'     => 'descripción',
+            'costo'           => 'costo',
+            'caracteristicas' => 'características',
+            'stock'           => 'stock',
         ];
     }
 }

@@ -30,23 +30,47 @@ class DatabaseSeeder extends Seeder
             'rol'      => 'cliente',
         ]);
 
-        // --- Artículos -------------------------------------------------------
-        $teclado = Article::create([
-            'nombre'      => 'Teclado mecánico',
-            'descripcion' => 'Teclado retroiluminado con switches azules.',
-            'costo'       => 799.00,
+        // --- Artículos (sombreros con atributos dinámicos en JSONB) ----------
+        $fedora = Article::create([
+            'nombre'          => 'Sombrero Fedora Clásico',
+            'descripcion'     => 'Fedora de fieltro de lana con cinta de grosgrain.',
+            'costo'           => 799.00,
+            'stock'           => 25,
+            'caracteristicas' => [
+                'talla'         => 'M',
+                'color'         => 'Negro',
+                'material'      => 'Fieltro de lana',
+                'estilo_ala'    => 'Ala media curva',
+                'dimensiones'   => ['ala_cm' => 6, 'copa_cm' => 11],
+            ],
         ]);
 
-        $mouse = Article::create([
-            'nombre'      => 'Mouse inalámbrico',
-            'descripcion' => 'Mouse ergonómico 2.4GHz con receptor USB.',
-            'costo'       => 349.50,
+        $panama = Article::create([
+            'nombre'          => 'Sombrero Panamá Montecristi',
+            'descripcion'     => 'Tejido a mano en paja toquilla, ligero y transpirable.',
+            'costo'           => 349.50,
+            'stock'           => 40,
+            'caracteristicas' => [
+                'talla'      => 'L',
+                'color'      => 'Natural',
+                'material'   => 'Paja toquilla',
+                'estilo_ala' => 'Ala ancha',
+                'origen'     => 'Ecuador',
+            ],
         ]);
 
-        $monitor = Article::create([
-            'nombre'      => 'Monitor 24 pulgadas',
-            'descripcion' => 'Monitor IPS Full HD a 75Hz.',
-            'costo'       => 2599.00,
+        $texano = Article::create([
+            'nombre'          => 'Sombrero Vaquero Texano',
+            'descripcion'     => 'Sombrero de ala ancha estilo western con banda de cuero.',
+            'costo'           => 2599.00,
+            'stock'           => 12,
+            'caracteristicas' => [
+                'talla'      => 'XL',
+                'color'      => 'Café',
+                'material'   => 'Fieltro de castor',
+                'estilo_ala' => 'Ala ancha levantada',
+                'accesorios' => ['banda_cuero', 'concha_metalica'],
+            ],
         ]);
 
         // --- Carrito de ejemplo ---------------------------------------------
@@ -55,8 +79,8 @@ class DatabaseSeeder extends Seeder
             'costo_total' => 0,
         ]);
 
-        $cart->items()->create(['article_id' => $teclado->id]);
-        $cart->items()->create(['article_id' => $mouse->id]);
+        $cart->items()->create(['article_id' => $fedora->id]);
+        $cart->items()->create(['article_id' => $panama->id]);
         $cart->recalculateTotal();
 
         // --- Compra de ejemplo ----------------------------------------------
@@ -66,25 +90,25 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $purchase->items()->create([
-            'article_id' => $monitor->id,
-            'costo'      => $monitor->costo,
+            'article_id' => $texano->id,
+            'costo'      => $texano->costo,
         ]);
 
-        $purchase->update(['total' => $monitor->costo]);
+        $purchase->update(['total' => $texano->costo]);
 
         // --- Reseñas de ejemplo ---------------------------------------------
         Review::create([
-            'article_id'   => $teclado->id,
+            'article_id'   => $fedora->id,
             'user_id'      => $cliente->id,
             'calificacion' => 5,
-            'descripcion'  => 'Excelente teclado, muy buena respuesta de las teclas.',
+            'descripcion'  => 'Excelente fedora, el fieltro es de gran calidad y la talla es exacta.',
         ]);
 
         Review::create([
-            'article_id'   => $mouse->id,
+            'article_id'   => $panama->id,
             'user_id'      => $cliente->id,
             'calificacion' => 4,
-            'descripcion'  => 'Cómodo y preciso, aunque la pila dura poco.',
+            'descripcion'  => 'Muy ligero y fresco; el ala ancha protege bien del sol.',
         ]);
     }
 }

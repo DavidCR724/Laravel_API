@@ -1,0 +1,76 @@
+### Pruebas Sprint 2 — Endpoints de IA (Google Gemini)
+### Cliente HTTP: extensión "REST Client" de VS Code (haz clic en "Send Request").
+###
+### Requisitos previos (en tu entorno local con PHP 7.4 + PostgreSQL):
+###   1. composer install
+###   2. En .env define GEMINI_API_KEY=<tu key de https://aistudio.google.com/app/apikey>
+###   3. php artisan config:clear   (para releer .env)
+###   4. php artisan migrate:fresh --seed
+###   5. php artisan serve   (http://127.0.0.1:8000)
+
+@baseUrl = http://127.0.0.1:8000/api
+
+### 1) Búsqueda semántica (PÚBLICA) — interpreta las caracteristicas JSONB
+POST {{baseUrl}}/ai/search
+Content-Type: application/json
+
+{
+  "query": "un sombrero elegante de fieltro para un evento formal en invierno"
+}
+
+### 2) Búsqueda semántica — ejemplo por material/uso
+POST {{baseUrl}}/ai/search
+Content-Type: application/json
+
+{
+  "query": "algo ligero y fresco de paja para la playa"
+}
+
+### 3) ChatBot (PÚBLICA) — primer turno, sin historial
+# @name chat1
+POST {{baseUrl}}/ai/chat
+Content-Type: application/json
+
+{
+  "message": "¿Qué diferencia hay entre un sombrero de fieltro de lana y uno de paja toquilla?"
+}
+
+### 4) ChatBot — segundo turno reenviando el historial devuelto
+###    (copia el arreglo "history" de la respuesta anterior en el campo history)
+POST {{baseUrl}}/ai/chat
+Content-Type: application/json
+
+{
+  "message": "¿Y cuál me recomiendas para clima caluroso?",
+  "history": [
+    { "role": "user",  "text": "¿Qué diferencia hay entre fieltro de lana y paja toquilla?" },
+    { "role": "model", "text": "<pega aquí la respuesta del turno anterior>" }
+  ]
+}
+
+### --- Recomendaciones: requieren sesión de CLIENTE ---
+
+### 5) Login como CLIENTE para obtener token
+# @name login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "user": "cliente",
+  "password": "cliente123"
+}
+
+###
+@token = {{login.response.body.token}}
+
+### 6) Recomendaciones IA (PROTEGIDA, rol cliente) — usa compras + carrito del seeder
+GET {{baseUrl}}/ai/recommendations
+Authorization: Bearer {{token}}
+
+### 7) Validación: query es obligatorio → debe responder 422
+POST {{baseUrl}}/ai/search
+Content-Type: application/json
+
+{
+  "query": ""
+}

@@ -17,13 +17,17 @@ class Article extends Model
         'nombre',
         'descripcion',
         'costo',
+        'caracteristicas',
+        'stock',
     ];
 
     /**
      * @var array<string, string>
      */
     protected $casts = [
-        'costo' => 'decimal:2',
+        'costo'          => 'decimal:2',
+        'caracteristicas' => 'array',
+        'stock'          => 'integer',
     ];
 
     public function cartItems(): HasMany

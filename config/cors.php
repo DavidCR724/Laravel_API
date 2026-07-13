@@ -16,12 +16,14 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // Orígenes permitidos. El front de React corre en localhost:8000.
-    // (Se incluye 127.0.0.1 porque el navegador lo trata como origen distinto.)
-    'allowed_origins' => [
-        'http://localhost:8000',
-        'http://127.0.0.1:8000',
-    ],
+    // Orígenes permitidos = DE DÓNDE carga el navegador el front (la URL en la
+    // barra), NO la IP de la API. Como el front puede abrirse desde localhost:8000
+    // o desde la IP de la máquina (p. ej. http://10.109.8.62:8000), y usamos tokens
+    // Bearer (supports_credentials=false), lo dejamos abierto con '*'.
+    //
+    // Para restringir, sustituye '*' por la(s) URL(s) del front, por ejemplo:
+    //   'http://localhost:8000', 'http://10.109.8.62:8000'
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 

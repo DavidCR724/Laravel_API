@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
@@ -49,6 +50,10 @@ Route::get('articles/{article}/reviews', [ReviewController::class, 'index']);
 Route::get('reviews', [ReviewController::class, 'index']);
 Route::get('reviews/{id}', [ReviewController::class, 'show'])->whereNumber('id');
 
+// IA: búsqueda semántica y chatbot (accesibles para invitados).
+Route::post('ai/search', [AiController::class, 'search']);
+Route::post('ai/chat', [AiController::class, 'chat']);
+
 /*
 |--------------------------------------------------------------------------
 | Rutas AUTENTICADAS (requieren token Bearer)
@@ -69,8 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         // Gestión de productos (crear, editar, borrar).
         Route::post('articles', [ArticleController::class, 'store']);
-        Route::match(['put', 'patch'], 'articles/{id}', [ArticleController::class, 'update']);
-        Route::delete('articles/{id}', [ArticleController::class, 'destroy']);
+        Route::match(['put', 'patch'], 'articles/{id}', [ArticleController::class, 'update'])->whereNumber('id');
+        Route::patch('articles/{id}/stock', [ArticleController::class, 'updateStock'])->whereNumber('id');
+        Route::delete('articles/{id}', [ArticleController::class, 'destroy'])->whereNumber('id');
 
         // Gestión de usuarios.
         Route::apiResource('users', UserController::class);
@@ -96,6 +102,9 @@ Route::middleware('auth:sanctum')->group(function () {
     |----------------------------------------------------------------------
     */
     Route::middleware('role:cliente')->group(function () {
+        // Recomendaciones IA según historial de compras y carrito.
+        Route::get('ai/recommendations', [AiController::class, 'recommendations']);
+
         Route::apiResource('carts', CartController::class);
         Route::get('carts/{cart}/items', [CartItemController::class, 'index']);
         Route::apiResource('cart-items', CartItemController::class);
