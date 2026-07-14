@@ -1,11 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AuthProvider } from './auth/AuthContext'
+import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
-import Layout from './components/Layout'
+import DashboardLayout from './layouts/DashboardLayout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import Articles from './pages/Articles'
-import Users from './pages/Users'
+import Products from './pages/Products'
+import Clients from './pages/Clients'
+import Sales from './pages/Sales'
+import AiAssistant from './pages/AiAssistant'
 
 export default function App() {
   return (
@@ -14,12 +16,13 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
 
-          {/* Vistas protegidas: solo accesibles con sesión de admin. */}
           <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
+            <Route element={<DashboardLayout />}>
               <Route index element={<Dashboard />} />
-              <Route path="articulos" element={<Articles />} />
-              <Route path="usuarios" element={<Users />} />
+              <Route path="productos" element={<Products />} />
+              <Route path="clientes" element={<Clients />} />
+              <Route path="ventas" element={<Sales />} />
+              <Route path="asistente-ia" element={<AiAssistant />} />
             </Route>
           </Route>
 

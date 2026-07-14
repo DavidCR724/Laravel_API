@@ -209,9 +209,9 @@ Puntos clave:
 
 - `config/auth.php`: el **guard por defecto es `sanctum`**, por eso
   `$request->user()` resuelve al usuario a partir del token en toda la app.
-- `config/sanctum.php`: **`'expiration' => 5`** → los tokens caducan a los **5
-  minutos**. Pasado ese tiempo, cualquier ruta protegida responde **401**, y el
-  front cierra la sesión localmente (ver §14).
+- `config/sanctum.php`: **`'expiration' => 5 * 24 * 60`** → los tokens caducan
+  a los **5 días**. Pasado ese tiempo, cualquier ruta protegida responde
+  **401**, y el front cierra la sesión localmente (ver §14).
 
 ---
 

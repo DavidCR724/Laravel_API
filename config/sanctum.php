@@ -35,11 +35,11 @@ return [
     |
     | Minutos de validez de un token de sesión. Pasado ese tiempo desde su
     | creación, el token deja de funcionar (habrá que volver a iniciar sesión).
-    | Aquí: 5 minutos como máximo.
+    | Aquí: 5 días (5 * 24 * 60 minutos) como máximo.
     |
     */
 
-    'expiration' => 5,
+    'expiration' => 5 * 24 * 60,
 
     /*
     |--------------------------------------------------------------------------

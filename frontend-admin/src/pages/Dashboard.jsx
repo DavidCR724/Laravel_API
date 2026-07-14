@@ -1,163 +1,98 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
-import { Alert, Spinner, StatCard } from '../components/ui'
+import { Award, DollarSign, ShoppingBag, UserCheck } from 'lucide-react'
+import api from '../api/client'
 
-const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
-const LOW_STOCK = 5
+function KpiCard({ icon: Icon, label, value, sub }) {
+  return (
+    <div className="card border-t-4 border-t-gold">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-leather-dark/50">{label}</p>
+          <p className="mt-1 font-serif text-2xl font-bold text-leather-dark">{value}</p>
+          {sub && <p className="mt-1 text-xs text-leather-dark/50">{sub}</p>}
+        </div>
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gold/15 text-gold-dark">
+          <Icon size={20} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const money = (n) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n) || 0)
 
 export default function Dashboard() {
-  const { api } = useAuth()
-  const [articles, setArticles] = useState([])
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [purchases, setPurchases] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    let active = true
-    ;(async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const [a, u] = await Promise.all([api('/api/articles'), api('/api/users')])
-        if (!active) return
-        setArticles((a && a.data) || [])
-        setUsers((u && u.data) || [])
-      } catch (err) {
-        if (active) setError(err.message || 'No se pudieron cargar las métricas.')
-      } finally {
-        if (active) setLoading(false)
+    api
+      .get('/api/purchases')
+      .then((res) => setPurchases(res.data?.data || []))
+      .catch((err) => setError(err.message || 'No se pudo cargar el historial de ventas.'))
+  }, [])
+
+  const stats = useMemo(() => {
+    if (!purchases) return null
+
+    const totalVentas = purchases.reduce((sum, p) => sum + Number(p.total || 0), 0)
+
+    const productCounts = new Map()
+    const clientCounts = new Map()
+
+    for (const p of purchases) {
+      const clientName = p.user?.user || `#${p.user_id}`
+      clientCounts.set(clientName, (clientCounts.get(clientName) || 0) + 1)
+
+      for (const item of p.items || []) {
+        const name = item.article?.nombre || `Artículo #${item.article_id}`
+        productCounts.set(name, (productCounts.get(name) || 0) + 1)
       }
-    })()
-    return () => {
-      active = false
     }
-  }, [api])
 
-  const metrics = useMemo(() => {
-    const totalArticulos = articles.length
-    const unidades = articles.reduce((s, a) => s + Number(a.stock || 0), 0)
-    const valor = articles.reduce((s, a) => s + Number(a.costo || 0) * Number(a.stock || 0), 0)
-    const precioProm = totalArticulos
-      ? articles.reduce((s, a) => s + Number(a.costo || 0), 0) / totalArticulos
-      : 0
-    const bajos = articles
-      .filter((a) => Number(a.stock || 0) < LOW_STOCK)
-      .sort((x, y) => Number(x.stock || 0) - Number(y.stock || 0))
-
-    const admins = users.filter((u) => u.rol === 'admin').length
-    const clientes = users.filter((u) => u.rol === 'cliente').length
+    const topProduct = [...productCounts.entries()].sort((a, b) => b[1] - a[1])[0]
+    const topClient = [...clientCounts.entries()].sort((a, b) => b[1] - a[1])[0]
 
     return {
-      totalArticulos,
-      unidades,
-      valor,
-      precioProm,
-      bajos,
-      totalUsuarios: users.length,
-      admins,
-      clientes,
+      totalVentas,
+      totalCompras: purchases.length,
+      topProduct,
+      topClient,
     }
-  }, [articles, users])
-
-  if (loading) {
-    return (
-      <div className="pt-10">
-        <Spinner label="Cargando métricas…" />
-      </div>
-    )
-  }
+  }, [purchases])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
-        <p className="text-sm text-slate-500">Resumen del catálogo, inventario y usuarios.</p>
-      </div>
+    <div>
+      <h1 className="mb-1 font-serif text-2xl font-bold text-leather-dark">Estadísticas</h1>
+      <p className="mb-6 text-sm text-leather-dark/60">Resumen general del desempeño de la tienda.</p>
 
-      {error && <Alert type="error">{error}</Alert>}
-
-      {/* Catálogo e inventario */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Artículos" value={metrics.totalArticulos} accent="indigo" />
-        <StatCard
-          label="Unidades en stock"
-          value={metrics.unidades}
-          accent="emerald"
-          hint="Suma de existencias"
-        />
-        <StatCard
-          label="Valor de inventario"
-          value={currency.format(metrics.valor)}
-          accent="slate"
-          hint="Σ costo × stock"
-        />
-        <StatCard
-          label="Precio promedio"
-          value={currency.format(metrics.precioProm)}
-          accent="amber"
-        />
-      </div>
-
-      {/* Usuarios */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Usuarios totales" value={metrics.totalUsuarios} accent="indigo" />
-        <StatCard label="Administradores" value={metrics.admins} accent="rose" />
-        <StatCard label="Clientes" value={metrics.clientes} accent="emerald" />
-      </div>
-
-      {/* Stock bajo */}
-      <div className="card">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-800">
-            Stock bajo <span className="text-slate-400">(&lt; {LOW_STOCK} unidades)</span>
-          </h2>
-          <Link to="/articulos" className="text-sm font-medium text-indigo-600 hover:underline">
-            Gestionar artículos →
-          </Link>
+      {error && (
+        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
         </div>
+      )}
 
-        {metrics.bajos.length === 0 ? (
-          <p className="text-sm text-slate-500">Todo el catálogo tiene stock suficiente. 🎉</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead>
-                <tr>
-                  <th className="th">Artículo</th>
-                  <th className="th">Costo</th>
-                  <th className="th">Stock</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {metrics.bajos.map((a) => (
-                  <tr key={a.id}>
-                    <td className="td font-medium text-slate-800">{a.nombre}</td>
-                    <td className="td">{currency.format(Number(a.costo || 0))}</td>
-                    <td className="td">
-                      <span
-                        className={`badge ${
-                          Number(a.stock || 0) === 0
-                            ? 'bg-rose-100 text-rose-700'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}
-                      >
-                        {a.stock ?? 0}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {!purchases && !error && <p className="text-sm text-leather-dark/50">Cargando…</p>}
 
-      <p className="text-xs text-slate-400">
-        Nota: las métricas de <strong>ventas/ingresos</strong> requieren un endpoint de administrador
-        para <code>purchases</code> (hoy las compras están limitadas al rol cliente). Puedo añadirlo
-        al backend si lo necesitas.
-      </p>
+      {stats && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard icon={DollarSign} label="Ventas acumuladas" value={money(stats.totalVentas)} />
+          <KpiCard icon={ShoppingBag} label="Compras totales" value={stats.totalCompras} />
+          <KpiCard
+            icon={Award}
+            label="Producto más vendido"
+            value={stats.topProduct ? stats.topProduct[0] : '—'}
+            sub={stats.topProduct ? `${stats.topProduct[1]} unidades` : 'Sin datos aún'}
+          />
+          <KpiCard
+            icon={UserCheck}
+            label="Cliente con más compras"
+            value={stats.topClient ? stats.topClient[0] : '—'}
+            sub={stats.topClient ? `${stats.topClient[1]} compras` : 'Sin datos aún'}
+          />
+        </div>
+      )}
     </div>
   )
 }

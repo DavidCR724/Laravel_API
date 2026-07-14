@@ -1,7 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../context/AuthContext'
 
-// Guarda las rutas: si no hay sesión de admin activa, redirige a /login.
 export default function ProtectedRoute() {
   const { isAuthenticated } = useAuth()
   const location = useLocation()

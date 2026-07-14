@@ -1,57 +1,63 @@
-// Cliente HTTP sobre fetch que actúa como "interceptor":
-//  - adjunta el header Authorization: Bearer <token> en cada petición,
-//  - centraliza el manejo de errores (incluido el 401 por token expirado),
-//  - extrae el primer mensaje útil de los errores de validación 422.
+import axios from 'axios'
 
-function buildUrl(baseUrl, path) {
-  return String(baseUrl).replace(/\/+$/, '') + path
+// Claves de localStorage (el panel corre en su propio origen: puerto 5174).
+export const LS = {
+  url: 'admin_api_url',
+  token: 'admin_token',
+  user: 'admin_user',
 }
 
-export async function apiFetch(baseUrl, path, options = {}) {
-  const { method = 'GET', token = null, body = null, onUnauthorized = null } = options
+export const DEFAULT_API_URL = 'http://192.168.1.110:8000'
 
-  const headers = { Accept: 'application/json' }
-  if (body) headers['Content-Type'] = 'application/json'
-  if (token) headers['Authorization'] = `Bearer ${token}`
+const api = axios.create({
+  headers: { Accept: 'application/json' },
+})
 
-  let res
-  try {
-    res = await fetch(buildUrl(baseUrl, path), {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    })
-  } catch (e) {
-    const err = new Error(
-      'No se pudo conectar con la API. Revisa la URL configurada y que el servidor esté encendido.'
-    )
-    err.status = 0
-    throw err
+// Cada petición toma la URL base y el token vigentes de localStorage, así
+// AuthContext puede cambiarlos (login/logout/cambio de servidor) sin
+// necesidad de recrear el cliente.
+api.interceptors.request.use((config) => {
+  const apiUrl = localStorage.getItem(LS.url) || DEFAULT_API_URL
+  config.baseURL = apiUrl.replace(/\/+$/, '')
+
+  const token = localStorage.getItem(LS.token)
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
 
-  let data = null
-  try {
-    data = await res.json()
-  } catch (e) {
-    // respuesta sin cuerpo JSON
-  }
+  return config
+})
 
-  // Token expirado / inválido: dispara el cierre de sesión centralizado.
-  if (res.status === 401 && typeof onUnauthorized === 'function') {
-    onUnauthorized()
-  }
+// Extrae siempre un mensaje legible (incluidos los errores 422 de validación
+// de Laravel) y centraliza el cierre de sesión cuando el token ya no sirve.
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const res = error.response
 
-  if (!res.ok) {
-    const error = new Error((data && data.message) || `Error ${res.status}`)
-    error.status = res.status
-    error.data = data
-
-    if (res.status === 422 && data && data.errors) {
-      const first = Object.values(data.errors)[0]
-      if (first && first[0]) error.message = first[0]
+    if (!res) {
+      error.message = 'No se pudo conectar con la API. Revisa la dirección configurada y que el servidor esté encendido.'
+      return Promise.reject(error)
     }
-    throw error
-  }
 
-  return data
-}
+    if (res.status === 401) {
+      localStorage.removeItem(LS.token)
+      localStorage.removeItem(LS.user)
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
+    }
+
+    const data = res.data
+    if (res.status === 422 && data?.errors) {
+      const first = Object.values(data.errors)[0]
+      error.message = (first && first[0]) || error.message
+    } else if (data?.message) {
+      error.message = data.message
+    }
+
+    return Promise.reject(error)
+  }
+)
+
+export default api

@@ -1,25 +1,17 @@
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
-import { Alert, Spinner } from '../components/ui'
+import { useNavigate } from 'react-router-dom'
+import { Crown, Lock, ServerCog, User as UserIcon } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
-  const { apiUrl, setApiUrl, login, isAuthenticated } = useAuth()
+  const { apiUrl, setApiUrl, login } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state && location.state.from) || '/'
 
   const [urlDraft, setUrlDraft] = useState(apiUrl)
-  const [username, setUsername] = useState('')
+  const [user, setUser] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  // Si ya hay sesión, no tiene sentido mostrar el login.
-  if (isAuthenticated) {
-    navigate('/', { replace: true })
-    return null
-  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -27,8 +19,8 @@ export default function Login() {
     setLoading(true)
     try {
       setApiUrl(urlDraft)
-      await login(username.trim(), password)
-      navigate(from, { replace: true })
+      await login(user, password)
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err.message || 'No se pudo iniciar sesión.')
     } finally {
@@ -37,69 +29,72 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center p-4">
+    <div className="flex min-h-full items-center justify-center bg-denim px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <div className="text-4xl">🎩</div>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-800">Sombrerería · Admin</h1>
-          <p className="text-sm text-slate-500">Panel de administración</p>
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-leather-dark shadow-lg">
+            <Crown size={28} />
+          </div>
+          <h1 className="font-serif text-2xl font-bold text-white">Sombrerería</h1>
+          <p className="text-sm text-white/60">Panel de administración</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card space-y-4">
-          {error && <Alert type="error">{error}</Alert>}
+        <form onSubmit={handleSubmit} className="card border-t-4 border-t-gold">
+          {error && (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {error}
+            </div>
+          )}
 
-          <div>
-            <label className="label" htmlFor="apiUrl">
-              Dirección de la API
-            </label>
+          <div className="mb-4">
+            <label className="label">Usuario</label>
+            <div className="relative">
+              <UserIcon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-leather-dark/40" />
+              <input
+                className="input pl-9"
+                value={user}
+                onChange={(e) => setUser(e.target.value)}
+                placeholder="admin"
+                autoComplete="username"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="label">Contraseña</label>
+            <div className="relative">
+              <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-leather-dark/40" />
+              <input
+                type="password"
+                className="input pl-9"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+          </div>
+
+          <details className="mb-4 rounded-lg border border-leather/15 bg-cream/60 px-3 py-2">
+            <summary className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-leather-dark/70">
+              <ServerCog size={14} /> Dirección de la API
+            </summary>
             <input
-              id="apiUrl"
-              className="input"
+              className="input mt-2"
               value={urlDraft}
               onChange={(e) => setUrlDraft(e.target.value)}
-              placeholder="http://localhost:8000"
+              placeholder="http://192.168.1.110:8000"
             />
-            <p className="mt-1 text-xs text-slate-400">
-              URL donde corre Laravel (p. ej. <code>php artisan serve</code>).
+            <p className="mt-1 text-[11px] text-leather-dark/50">
+              Ej.: http://192.168.1.110:8000 si el backend corre en otra máquina/VM.
             </p>
-          </div>
-
-          <div>
-            <label className="label" htmlFor="user">
-              Usuario
-            </label>
-            <input
-              id="user"
-              className="input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="label" htmlFor="password">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              type="password"
-              className="input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
+          </details>
 
           <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-            {loading ? <Spinner label="Entrando…" /> : 'Iniciar sesión'}
+            {loading ? 'Entrando…' : 'Iniciar sesión'}
           </button>
-
-          <p className="text-center text-xs text-slate-400">
-            Credenciales de ejemplo (seeder): <strong>admin</strong> / <strong>admin123</strong>
-          </p>
         </form>
       </div>
     </div>

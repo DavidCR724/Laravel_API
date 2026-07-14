@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Plus, X } from 'lucide-react'
 
-// Atributos típicos de un sombrero, ofrecidos como accesos rápidos.
+// Atributos típicos de un sombrero, como accesos rápidos.
 const SUGGESTED = ['talla', 'color', 'material', 'estilo_ala']
 
 function toRows(obj) {
@@ -18,13 +19,12 @@ function rowsToObject(rows) {
     const k = key.trim()
     if (!k) return
     const t = value.trim()
-    // Soporta valores anidados (objetos/arrays) escritos como JSON.
     if (t.startsWith('{') || t.startsWith('[')) {
       try {
         out[k] = JSON.parse(t)
         return
-      } catch (e) {
-        // si no es JSON válido, se guarda como texto
+      } catch {
+        // si no es JSON válido, se guarda como texto plano
       }
     }
     out[k] = value
@@ -32,8 +32,8 @@ function rowsToObject(rows) {
   return out
 }
 
-// Formulario dinámico de "caracteristicas" (JSON). Emite el objeto resultante
-// vía onChange cada vez que cambia.
+// Formulario dinámico para "caracteristicas" (columna JSONB de Article).
+// Emite el objeto resultante vía onChange cada vez que cambia.
 export default function CaracteristicasEditor({ initialValue, onChange }) {
   const [rows, setRows] = useState(() => toRows(initialValue))
 
@@ -47,18 +47,18 @@ export default function CaracteristicasEditor({ initialValue, onChange }) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="label mb-0">Características (JSON dinámico)</span>
+        <span className="label mb-0">Características (atributos dinámicos)</span>
         <button
           type="button"
           className="btn btn-secondary btn-sm"
           onClick={() => update([...rows, { key: '', value: '' }])}
         >
-          + Agregar
+          <Plus size={14} /> Agregar
         </button>
       </div>
 
       {rows.length === 0 && (
-        <p className="mb-2 text-xs text-slate-500">
+        <p className="mb-2 text-xs text-leather-dark/50">
           Sin características. Agrega atributos como talla, color, material o estilo de ala.
         </p>
       )}
@@ -88,7 +88,7 @@ export default function CaracteristicasEditor({ initialValue, onChange }) {
               onClick={() => update(rows.filter((_, idx) => idx !== i))}
               aria-label="Quitar característica"
             >
-              ✕
+              <X size={14} />
             </button>
           </div>
         ))}
@@ -99,7 +99,7 @@ export default function CaracteristicasEditor({ initialValue, onChange }) {
           <button
             key={k}
             type="button"
-            className="badge bg-slate-100 text-slate-600 hover:bg-slate-200"
+            className="badge bg-denim/10 text-denim hover:bg-denim/20"
             onClick={() => update([...rows, { key: k, value: '' }])}
           >
             + {k}

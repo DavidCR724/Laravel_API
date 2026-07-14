@@ -109,7 +109,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('carts/{cart}/items', [CartItemController::class, 'index']);
         Route::apiResource('cart-items', CartItemController::class);
 
-        Route::apiResource('purchases', PurchaseController::class)
-            ->only(['index', 'store', 'show', 'destroy']);
+        Route::post('purchases', [PurchaseController::class, 'store']);
+        Route::delete('purchases/{id}', [PurchaseController::class, 'destroy'])->whereNumber('id');
+    });
+
+    // Historial de compras: lo consulta tanto el cliente (las suyas) como el
+    // admin (panel de "Historial de ventas").
+    Route::middleware('role:cliente,admin')->group(function () {
+        Route::get('purchases', [PurchaseController::class, 'index']);
+        Route::get('purchases/{id}', [PurchaseController::class, 'show'])->whereNumber('id');
     });
 });
