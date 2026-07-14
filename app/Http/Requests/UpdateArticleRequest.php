@@ -17,9 +17,11 @@ class UpdateArticleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre'      => ['sometimes', 'required', 'string', 'max:255'],
-            'descripcion' => ['sometimes', 'required', 'string', 'max:2000'],
-            'costo'       => ['sometimes', 'required', 'numeric', 'min:0'],
+            'nombre'          => ['sometimes', 'required', 'string', 'max:255'],
+            'descripcion'     => ['sometimes', 'required', 'string', 'max:2000'],
+            'costo'           => ['sometimes', 'required', 'numeric', 'min:0'],
+            'caracteristicas' => ['sometimes', 'nullable', 'array'],
+            'stock'           => ['sometimes', 'nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -29,9 +31,11 @@ class UpdateArticleRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'nombre'      => 'nombre',
-            'descripcion' => 'descripción',
-            'costo'       => 'costo',
+            'nombre'          => 'nombre',
+            'descripcion'     => 'descripción',
+            'costo'           => 'costo',
+            'caracteristicas' => 'características',
+            'stock'           => 'stock',
         ];
     }
 }

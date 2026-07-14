@@ -10,6 +10,9 @@ export default function App() {
   const [baseUrl, setBaseUrl] = useState(
     () => localStorage.getItem('baseUrl') || 'http://localhost:8000'
   )
+  // Borrador del campo de texto. La URL efectiva (baseUrl) sólo se aplica al
+  // pulsar "Conectar", para NO lanzar peticiones en cada tecla mientras escribes.
+  const [apiInput, setApiInput] = useState(baseUrl)
   const [token, setToken] = useState(() => localStorage.getItem('token') || '')
   const [user, setUser] = useState(() =>
     JSON.parse(localStorage.getItem('user') || 'null')
@@ -25,6 +28,14 @@ export default function App() {
   const notify = useCallback((text, type = 'info') => {
     setNotice({ text, type })
   }, [])
+
+  // Aplica la dirección escrita: apenas aquí se empiezan a hacer peticiones a ella.
+  function applyApi() {
+    const url = apiInput.trim().replace(/\/+$/, '')
+    setBaseUrl(url)
+    setApiInput(url)
+    notify(`Conectado a ${url}`, 'info')
+  }
 
   // Manejo central de errores de autenticación: si un token expiró (401),
   // cerramos la sesión localmente.
@@ -83,14 +94,23 @@ export default function App() {
     <div className="container">
       {/* ---------------------------- Barra superior ---------------------------- */}
       <header className="header">
-        <label className="apiField">
+        <div className="apiField">
           <span>Dirección de la API</span>
-          <input
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="http://IP_DEL_SERVIDOR:8000"
-          />
-        </label>
+          <div className="row">
+            <input
+              className="grow"
+              value={apiInput}
+              onChange={(e) => setApiInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyApi()
+              }}
+              placeholder="http://IP_DEL_SERVIDOR:8000"
+            />
+            <button className="secondary" onClick={applyApi}>
+              Conectar
+            </button>
+          </div>
+        </div>
 
         <div className="session">
           {user ? (

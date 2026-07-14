@@ -1,0 +1,98 @@
+### Pruebas Sprint 1 — Atributos dinámicos (JSONB) y control de stock
+### Cliente HTTP: extensión "REST Client" de VS Code (haz clic en "Send Request").
+###
+### Requisitos previos (en tu entorno local con PHP 7.4 + PostgreSQL):
+###   1. composer install
+###   2. Configura la BD en .env y crea la base "laravel_api"
+###   3. php artisan migrate:fresh --seed
+###   4. php artisan serve   (queda escuchando en http://127.0.0.1:8000)
+
+@baseUrl = http://127.0.0.1:8000/api
+
+### 1) Login como ADMIN para obtener el token Bearer
+# @name login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "user": "admin",
+  "password": "admin123"
+}
+
+###
+@token = {{login.response.body.token}}
+
+### 2) Crear un artículo (sombrero) con características JSON anidadas — SOLO ADMIN
+# @name crear
+POST {{baseUrl}}/articles
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Sombrero Bombín Inglés",
+  "descripcion": "Bombín rígido de fieltro, estilo clásico londinense.",
+  "costo": 1290.50,
+  "stock": 15,
+  "caracteristicas": {
+    "talla": "M",
+    "color": "Gris Oxford",
+    "material": "Fieltro de lana prensada",
+    "estilo_ala": "Ala corta enrollada",
+    "dimensiones": { "ala_cm": 4, "copa_cm": 12 },
+    "cuidados": ["limpieza en seco", "no exponer a la lluvia"]
+  }
+}
+
+###
+@articuloId = {{crear.response.body.data.id}}
+
+### 3) Consultar el artículo creado — verifica que "caracteristicas" vuelve como
+###    objeto JSON (no como texto) gracias al cast 'array'. Ruta pública.
+GET {{baseUrl}}/articles/{{articuloId}}
+
+### 4) Listar todos los artículos (incluye los sombreros del seeder)
+GET {{baseUrl}}/articles
+
+### 5) Control de stock específico — fijar valor absoluto (SOLO ADMIN)
+PATCH {{baseUrl}}/articles/{{articuloId}}/stock
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "stock": 30
+}
+
+### 6) Control de stock específico — ajuste relativo (resta 5 al stock actual)
+PATCH {{baseUrl}}/articles/{{articuloId}}/stock
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ajuste": -5
+}
+
+### 7) Actualizar solo las características de un artículo (PATCH parcial)
+PATCH {{baseUrl}}/articles/{{articuloId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "caracteristicas": {
+    "talla": "L",
+    "color": "Negro",
+    "material": "Fieltro de lana prensada",
+    "estilo_ala": "Ala corta enrollada"
+  }
+}
+
+### 8) Validación: "caracteristicas" debe ser un array/objeto → debe responder 422
+POST {{baseUrl}}/articles
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Artículo inválido",
+  "descripcion": "Las caracteristicas van como texto plano, no como objeto.",
+  "costo": 100,
+  "caracteristicas": "talla M, color negro"
+}

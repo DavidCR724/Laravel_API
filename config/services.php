@@ -28,4 +28,20 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Gemini (integración de IA — Sprint 2)
+    |--------------------------------------------------------------------------
+    |
+    | API generativa de Google usada por AiController vía el facade Http.
+    | Obtén una API key gratuita en https://aistudio.google.com/app/apikey
+    |
+    */
+
+    'gemini' => [
+        'key'      => env('GEMINI_API_KEY'),
+        'model'    => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+    ],
+
 ];
