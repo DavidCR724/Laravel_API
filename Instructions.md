@@ -60,6 +60,11 @@ git status                 # revisa que no tengas cambios locales sin guardar
 > `git pull` puede fallar con *"untracked working tree files would be
 > overwritten by merge"*. Si pasa, respáldalo primero:
 > `mv server.php server.php.bak`.
+>
+> ⚠️ Lo mismo puede pasar con `composer.lock`: si en la VM alguna vez corriste
+> `composer install` sin tener ese archivo versionado, quedó como untracked y
+> ahora choca con el `composer.lock` que sí viene en el repo. Respáldalo igual:
+> `mv composer.lock composer.lock.bak`.
 
 ```bash
 git pull origin main

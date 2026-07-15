@@ -41,7 +41,7 @@ Authorization: Bearer <token>
 > Sanctum **no** es JWT: el token es una cadena aleatoria guardada en la tabla
 > `personal_access_tokens`, por lo que se puede **revocar** al instante (logout).
 >
-> ⏱️ **Los tokens expiran a los 5 días** (config `sanctum.expiration`). Pasado
+> ⏱️ **Los tokens expiran a los 5 minutos** (config `sanctum.expiration`). Pasado
 > ese tiempo hay que volver a iniciar sesión. Ver [request.md](request.md) para
 > los bodies de cada petición POST de un cliente.
 
