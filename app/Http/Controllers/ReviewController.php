@@ -11,17 +11,22 @@ use Illuminate\Http\Request;
 class ReviewController extends Controller
 {
     /**
-     * GET /api/reviews — Lista reseñas. Se puede filtrar por ?article_id=.
+     * GET /api/reviews — Lista reseñas. Se puede filtrar por ?article_id= y/o ?user_id=.
      * GET /api/articles/{article}/reviews — Reseñas de un artículo concreto.
      */
     public function index(Request $request): JsonResponse
     {
         $articleId = $request->route('article') ?? $request->query('article_id');
+        $userId = $request->query('user_id');
 
-        $query = Review::with(['article', 'user']);
+        $query = Review::with(['article', 'user'])->latest();
 
         if ($articleId !== null) {
             $query->where('article_id', (int) $articleId);
+        }
+
+        if ($userId !== null) {
+            $query->where('user_id', (int) $userId);
         }
 
         return response()->json(['data' => $query->get()]);

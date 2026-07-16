@@ -11,12 +11,19 @@ function formatDate(value) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString('es-MX')
 }
 
+const ESTADO_STYLES = {
+  pendiente: 'bg-amber-100 text-amber-700',
+  completado: 'bg-emerald-100 text-emerald-700',
+  cancelado: 'bg-rose-100 text-rose-700',
+}
+
 // Aplana compras -> una fila por artículo comprado (más fácil de buscar y leer).
 function flatten(purchases) {
   const rows = []
   for (const p of purchases) {
     const cliente = p.user?.user || `#${p.user_id}`
     const fecha = formatDate(p.created_at)
+    const estado = p.estado || 'completado'
     const items = p.items || []
 
     if (items.length === 0) {
@@ -25,7 +32,9 @@ function flatten(purchases) {
         purchaseId: p.id,
         cliente,
         fecha,
+        estado,
         producto: '—',
+        cantidad: 0,
         costo: 0,
         total: p.total,
       })
@@ -38,7 +47,9 @@ function flatten(purchases) {
         purchaseId: p.id,
         cliente,
         fecha,
+        estado,
         producto: item.article?.nombre || `Artículo #${item.article_id}`,
+        cantidad: item.cantidad ?? 1,
         costo: item.costo,
         total: p.total,
       })
@@ -65,7 +76,7 @@ export default function Sales() {
     const q = query.trim().toLowerCase()
     if (!q) return rows
     return rows.filter((r) =>
-      [r.producto, r.cliente, r.fecha, String(r.costo), String(r.total)]
+      [r.producto, r.cliente, r.fecha, r.estado, String(r.costo), String(r.total)]
         .join(' ')
         .toLowerCase()
         .includes(q)
@@ -102,8 +113,10 @@ export default function Sales() {
               <th className="th">Compra</th>
               <th className="th">Cliente</th>
               <th className="th">Producto</th>
+              <th className="th">Cant.</th>
               <th className="th">Fecha</th>
-              <th className="th">Precio</th>
+              <th className="th">Estado</th>
+              <th className="th">Precio unit.</th>
               <th className="th">Total de la compra</th>
             </tr>
           </thead>
@@ -113,7 +126,13 @@ export default function Sales() {
                 <td className="td">#{r.purchaseId}</td>
                 <td className="td">{r.cliente}</td>
                 <td className="td font-medium">{r.producto}</td>
+                <td className="td">{r.cantidad}</td>
                 <td className="td">{r.fecha}</td>
+                <td className="td">
+                  <span className={`badge ${ESTADO_STYLES[r.estado] || 'bg-denim/10 text-denim'}`}>
+                    {r.estado}
+                  </span>
+                </td>
                 <td className="td">{money(r.costo)}</td>
                 <td className="td">{money(r.total)}</td>
               </tr>

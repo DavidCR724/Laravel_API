@@ -80,6 +80,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gestión de usuarios.
         Route::apiResource('users', UserController::class);
+
+        // Gestión de pedidos (el admin crea, edita, cancela o elimina).
+        Route::post('admin/purchases', [PurchaseController::class, 'adminStore']);
+        Route::match(['put', 'patch'], 'admin/purchases/{id}', [PurchaseController::class, 'adminUpdate'])->whereNumber('id');
+        Route::patch('admin/purchases/{id}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('id');
+        Route::delete('admin/purchases/{id}', [PurchaseController::class, 'destroy'])->whereNumber('id');
     });
 
     /*

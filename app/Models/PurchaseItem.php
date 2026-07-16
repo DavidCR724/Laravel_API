@@ -17,13 +17,15 @@ class PurchaseItem extends Model
         'purchase_id',
         'article_id',
         'costo',
+        'cantidad',
     ];
 
     /**
      * @var array<string, string>
      */
     protected $casts = [
-        'costo' => 'decimal:2',
+        'costo'    => 'decimal:2',
+        'cantidad' => 'integer',
     ];
 
     public function purchase(): BelongsTo

@@ -50,6 +50,12 @@ class AuthController extends Controller
             ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
+        if (! $user->activo) {
+            return response()->json([
+                'message' => 'Tu cuenta está deshabilitada. Contacta al administrador.',
+            ], JsonResponse::HTTP_FORBIDDEN);
+        }
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([

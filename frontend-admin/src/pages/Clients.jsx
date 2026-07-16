@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react'
 import api from '../api/client'
 import Modal from '../components/Modal'
 import { useAuth } from '../context/AuthContext'
@@ -74,6 +74,26 @@ export default function Clients() {
     }
   }
 
+  async function handleToggleActive(u) {
+    if (u.id === currentUser?.id) {
+      alert('No puedes deshabilitar tu propio usuario.')
+      return
+    }
+    const disabling = u.activo
+    const verb = disabling ? 'deshabilitar' : 'habilitar'
+    if (
+      disabling &&
+      !confirm(`¿Deshabilitar al usuario "${u.user}"? No podrá iniciar sesión y se cerrará su sesión actual.`)
+    )
+      return
+    try {
+      await api.put(`/api/users/${u.id}`, { activo: !u.activo })
+      load()
+    } catch (err) {
+      alert(err.message || `No se pudo ${verb} el usuario.`)
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -98,6 +118,7 @@ export default function Clients() {
             <tr className="border-b border-leather/10">
               <th className="th">Usuario</th>
               <th className="th">Rol</th>
+              <th className="th">Estado</th>
               <th className="th text-right">Acciones</th>
             </tr>
           </thead>
@@ -114,8 +135,24 @@ export default function Clients() {
                     {u.rol}
                   </span>
                 </td>
+                <td className="td">
+                  <span
+                    className={`badge ${
+                      u.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                    }`}
+                  >
+                    {u.activo ? 'Activo' : 'Deshabilitado'}
+                  </span>
+                </td>
                 <td className="td text-right">
                   <div className="inline-flex gap-1">
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleToggleActive(u)}
+                      title={u.activo ? 'Deshabilitar usuario' : 'Habilitar usuario'}
+                    >
+                      {u.activo ? <Ban size={14} /> : <CheckCircle2 size={14} />}
+                    </button>
                     <button className="btn btn-secondary btn-sm" onClick={() => openEdit(u)}>
                       <Pencil size={14} />
                     </button>

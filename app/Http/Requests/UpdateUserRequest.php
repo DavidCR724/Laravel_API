@@ -25,6 +25,7 @@ class UpdateUserRequest extends FormRequest
             'user'     => ['sometimes', 'required', 'string', 'max:255', Rule::unique('users', 'user')->ignore($userId)],
             'password' => ['sometimes', 'required', 'string', 'min:6', 'max:255'],
             'rol'      => ['sometimes', 'required', 'string', 'max:50'],
+            'activo'   => ['sometimes', 'boolean'],
         ];
     }
 

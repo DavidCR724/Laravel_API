@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   Bot,
+  ClipboardList,
   Crown,
   LayoutDashboard,
   LogOut,
   Menu,
   Package,
   Receipt,
+  Star,
   Users as UsersIcon,
   X,
 } from 'lucide-react'
@@ -17,6 +19,8 @@ const NAV_ITEMS = [
   { to: '/', label: 'Estadísticas', end: true, icon: LayoutDashboard },
   { to: '/productos', label: 'Productos', end: false, icon: Package },
   { to: '/clientes', label: 'Clientes', end: false, icon: UsersIcon },
+  { to: '/pedidos', label: 'Pedidos', end: false, icon: ClipboardList },
+  { to: '/resenas', label: 'Reseñas', end: false, icon: Star },
   { to: '/ventas', label: 'Historial de ventas', end: false, icon: Receipt },
   { to: '/asistente-ia', label: 'Asistente IA', end: false, icon: Bot },
 ]

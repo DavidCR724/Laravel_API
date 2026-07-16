@@ -58,6 +58,12 @@ class UserController extends Controller
 
         $user->update($data);
 
+        // Al deshabilitar un usuario, revocamos sus tokens para cerrarle la
+        // sesión de inmediato (no solo impedir futuros inicios de sesión).
+        if (array_key_exists('activo', $data) && ! $user->activo) {
+            $user->tokens()->delete();
+        }
+
         return response()->json([
             'message' => 'Usuario actualizado correctamente.',
             'data'    => $user,

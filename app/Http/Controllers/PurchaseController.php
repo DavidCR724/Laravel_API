@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreAdminPurchaseRequest;
 use App\Http\Requests\StorePurchaseRequest;
+use App\Http\Requests\UpdateAdminPurchaseRequest;
+use App\Models\Article;
 use App\Models\Cart;
 use App\Models\Purchase;
 use Illuminate\Http\JsonResponse;
@@ -86,5 +89,113 @@ class PurchaseController extends Controller
         Purchase::findOrFail($id)->delete();
 
         return response()->json(['message' => 'Compra eliminada correctamente.']);
+    }
+
+    /**
+     * POST /api/admin/purchases — El ADMIN crea un pedido a mano.
+     *
+     * Elige el cliente y arma las líneas (artículo + cantidad). Si no envía el
+     * costo unitario de una línea, se toma el costo actual del artículo.
+     */
+    public function adminStore(StoreAdminPurchaseRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $purchase = DB::transaction(function () use ($data) {
+            $purchase = Purchase::create([
+                'user_id' => $data['user_id'],
+                'estado'  => $data['estado'] ?? 'completado',
+                'total'   => 0,
+            ]);
+
+            $total = $this->syncItems($purchase, $data['items']);
+            $purchase->update(['total' => $total]);
+
+            return $purchase;
+        });
+
+        return response()->json([
+            'message' => 'Pedido creado correctamente.',
+            'data'    => $purchase->load('items.article', 'user'),
+        ], JsonResponse::HTTP_CREATED);
+    }
+
+    /**
+     * PUT/PATCH /api/admin/purchases/{id} — El ADMIN edita un pedido.
+     *
+     * Puede cambiar el cliente, el estado y/o reemplazar las líneas completas.
+     */
+    public function adminUpdate(UpdateAdminPurchaseRequest $request, $id): JsonResponse
+    {
+        $purchase = Purchase::findOrFail($id);
+        $data = $request->validated();
+
+        DB::transaction(function () use ($purchase, $data) {
+            $attrs = array_filter(
+                ['user_id' => $data['user_id'] ?? null, 'estado' => $data['estado'] ?? null],
+                static fn ($v) => $v !== null
+            );
+
+            if (! empty($attrs)) {
+                $purchase->update($attrs);
+            }
+
+            // Si vienen items, reemplazan por completo las líneas y recalculan total.
+            if (isset($data['items'])) {
+                $purchase->items()->delete();
+                $total = $this->syncItems($purchase, $data['items']);
+                $purchase->update(['total' => $total]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Pedido actualizado correctamente.',
+            'data'    => $purchase->fresh()->load('items.article', 'user'),
+        ]);
+    }
+
+    /**
+     * PATCH /api/admin/purchases/{id}/cancel — Marca el pedido como cancelado.
+     *
+     * No borra el registro: solo cambia el estado (se conserva en el historial).
+     */
+    public function cancel($id): JsonResponse
+    {
+        $purchase = Purchase::findOrFail($id);
+        $purchase->update(['estado' => 'cancelado']);
+
+        return response()->json([
+            'message' => 'Pedido cancelado correctamente.',
+            'data'    => $purchase->load('items.article', 'user'),
+        ]);
+    }
+
+    /**
+     * Crea las líneas del pedido a partir del arreglo validado y devuelve el
+     * total (suma de costo unitario * cantidad). Si una línea no trae costo,
+     * usa el costo actual del artículo.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    private function syncItems(Purchase $purchase, array $items): float
+    {
+        $total = 0.0;
+
+        foreach ($items as $item) {
+            $cantidad = (int) $item['cantidad'];
+            $costo = isset($item['costo']) && $item['costo'] !== null
+                ? (float) $item['costo']
+                : (float) (Article::find($item['article_id'])->costo ?? 0);
+
+            $purchase->items()->create([
+                'article_id' => $item['article_id'],
+                'costo'      => $costo,
+                'cantidad'   => $cantidad,
+            ]);
+
+            $total += $costo * $cantidad;
+        }
+
+        return round($total, 2);
     }
 }

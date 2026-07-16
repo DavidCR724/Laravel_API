@@ -26,6 +26,7 @@ class User extends Authenticatable
         'user',
         'password',
         'rol',
+        'activo',
     ];
 
     /**
@@ -35,6 +36,13 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'activo' => 'boolean',
     ];
 
     public function carts(): HasMany
