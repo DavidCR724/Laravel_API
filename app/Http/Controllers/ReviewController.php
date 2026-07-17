@@ -33,11 +33,27 @@ class ReviewController extends Controller
     }
 
     /**
-     * POST /api/reviews — Crea una reseña de un artículo por parte de un usuario.
+     * POST /api/reviews — Crea una reseña. El usuario se toma de la sesión y
+     * solo puede reseñar artículos que haya comprado (compra no cancelada).
      */
     public function store(StoreReviewRequest $request): JsonResponse
     {
-        $review = Review::create($request->validated());
+        $data = $request->validated();
+        $user = $request->user();
+
+        $haComprado = $user->purchases()
+            ->where('estado', '!=', 'cancelado')
+            ->whereHas('items', function ($q) use ($data) {
+                $q->where('article_id', $data['article_id']);
+            })
+            ->exists();
+
+        if (! $haComprado) {
+            abort(JsonResponse::HTTP_FORBIDDEN, 'Solo puedes reseñar artículos que hayas comprado.');
+        }
+
+        $data['user_id'] = $user->id;
+        $review = Review::create($data);
 
         return response()->json([
             'message' => 'Reseña creada correctamente.',

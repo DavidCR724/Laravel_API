@@ -78,8 +78,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('articles/{id}/stock', [ArticleController::class, 'updateStock'])->whereNumber('id');
         Route::delete('articles/{id}', [ArticleController::class, 'destroy'])->whereNumber('id');
 
-        // Gestión de usuarios.
-        Route::apiResource('users', UserController::class);
+        // Gestión de usuarios: el admin puede listar, ver, editar (datos/rol/
+        // estado), bloquear y eliminar, pero NO crear usuarios (el alta es por
+        // registro del propio cliente).
+        Route::apiResource('users', UserController::class)->except(['store']);
 
         // Gestión de pedidos (el admin crea, edita, cancela o elimina).
         Route::post('admin/purchases', [PurchaseController::class, 'adminStore']);

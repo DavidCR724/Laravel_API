@@ -16,9 +16,10 @@ class StoreReviewRequest extends FormRequest
      */
     public function rules(): array
     {
+        // El user_id NO se acepta desde el cliente: se toma del usuario
+        // autenticado en el controlador.
         return [
             'article_id'   => ['required', 'integer', 'exists:articles,id'],
-            'user_id'      => ['required', 'integer', 'exists:users,id'],
             'calificacion' => ['required', 'integer', 'between:1,5'],
             'descripcion'  => ['required', 'string', 'max:2000'],
         ];
@@ -31,7 +32,6 @@ class StoreReviewRequest extends FormRequest
     {
         return [
             'article_id.exists'    => 'El artículo indicado no existe.',
-            'user_id.exists'       => 'El usuario indicado no existe.',
             'calificacion.between' => 'La calificación debe estar entre 1 y 5.',
         ];
     }

@@ -21,6 +21,9 @@ class AuthController extends Controller
 
         $user = User::create([
             'user'     => $data['user'],
+            'nombre'   => $data['nombre'] ?? null,
+            'correo'   => $data['correo'] ?? null,
+            'telefono' => $data['telefono'] ?? null,
             'password' => Hash::make($data['password']),
             'rol'      => 'cliente',
         ]);
@@ -42,7 +45,11 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
-        $user = User::where('user', $data['user'])->first();
+        // El identificador puede ser el nombre de usuario o el correo.
+        $identifier = $data['user'];
+        $user = User::where('user', $identifier)
+            ->orWhere('correo', $identifier)
+            ->first();
 
         if ($user === null || ! Hash::check($data['password'], $user->password)) {
             return response()->json([

@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Ban, CheckCircle2, Pencil, Trash2 } from 'lucide-react'
 import api from '../api/client'
 import Modal from '../components/Modal'
 import { useAuth } from '../context/AuthContext'
-
-const EMPTY_FORM = { user: '', password: '', rol: 'cliente' }
 
 export default function Clients() {
   const { user: currentUser } = useAuth()
@@ -12,7 +10,7 @@ export default function Clients() {
   const [error, setError] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState({ user: '', nombre: '', correo: '', telefono: '', rol: 'cliente' })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -20,21 +18,20 @@ export default function Clients() {
     api
       .get('/api/users')
       .then((res) => setUsers(res.data?.data || []))
-      .catch((err) => setError(err.message || 'No se pudieron cargar los clientes.'))
+      .catch((err) => setError(err.message || 'No se pudieron cargar los usuarios.'))
   }
 
   useEffect(load, [])
 
-  function openCreate() {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setFormError('')
-    setModalOpen(true)
-  }
-
   function openEdit(u) {
     setEditing(u)
-    setForm({ user: u.user, password: '', rol: u.rol })
+    setForm({
+      user: u.user || '',
+      nombre: u.nombre || '',
+      correo: u.correo || '',
+      telefono: u.telefono || '',
+      rol: u.rol || 'cliente',
+    })
     setFormError('')
     setModalOpen(true)
   }
@@ -44,13 +41,13 @@ export default function Clients() {
     setSaving(true)
     setFormError('')
     try {
-      if (editing) {
-        const payload = { user: form.user, rol: form.rol }
-        if (form.password) payload.password = form.password
-        await api.put(`/api/users/${editing.id}`, payload)
-      } else {
-        await api.post('/api/users', form)
-      }
+      await api.put(`/api/users/${editing.id}`, {
+        user: form.user,
+        nombre: form.nombre || null,
+        correo: form.correo || null,
+        telefono: form.telefono || null,
+        rol: form.rol,
+      })
       setModalOpen(false)
       load()
     } catch (err) {
@@ -96,14 +93,11 @@ export default function Clients() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="font-serif text-2xl font-bold text-leather-dark">Gestión de clientes</h1>
-          <p className="text-sm text-leather-dark/60">Usuarios registrados en el sistema.</p>
-        </div>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <Plus size={16} /> Nuevo usuario
-        </button>
+      <div className="mb-6">
+        <h1 className="font-serif text-2xl font-bold text-leather-dark">Gestión de usuarios</h1>
+        <p className="text-sm text-leather-dark/60">
+          Usuarios registrados. El alta se hace desde la app; aquí puedes editar, bloquear o eliminar.
+        </p>
       </div>
 
       {error && (
@@ -113,10 +107,13 @@ export default function Clients() {
       )}
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full min-w-[520px] border-collapse">
+        <table className="w-full min-w-[760px] border-collapse">
           <thead>
             <tr className="border-b border-leather/10">
               <th className="th">Usuario</th>
+              <th className="th">Nombre</th>
+              <th className="th">Correo</th>
+              <th className="th">Teléfono</th>
               <th className="th">Rol</th>
               <th className="th">Estado</th>
               <th className="th text-right">Acciones</th>
@@ -126,6 +123,9 @@ export default function Clients() {
             {users?.map((u) => (
               <tr key={u.id}>
                 <td className="td font-medium">{u.user}</td>
+                <td className="td">{u.nombre || <span className="text-leather-dark/30">—</span>}</td>
+                <td className="td">{u.correo || <span className="text-leather-dark/30">—</span>}</td>
+                <td className="td">{u.telefono || <span className="text-leather-dark/30">—</span>}</td>
                 <td className="td">
                   <span
                     className={`badge ${
@@ -153,10 +153,10 @@ export default function Clients() {
                     >
                       {u.activo ? <Ban size={14} /> : <CheckCircle2 size={14} />}
                     </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => openEdit(u)}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => openEdit(u)} title="Editar">
                       <Pencil size={14} />
                     </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u)}>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u)} title="Eliminar">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -172,7 +172,7 @@ export default function Clients() {
       </div>
 
       {modalOpen && (
-        <Modal title={editing ? 'Editar usuario' : 'Nuevo usuario'} onClose={() => setModalOpen(false)}>
+        <Modal title="Editar usuario" onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit}>
             {formError && (
               <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -191,17 +191,32 @@ export default function Clients() {
             </div>
 
             <div className="mb-4">
-              <label className="label">
-                Contraseña {editing && <span className="font-normal text-leather-dark/40">(dejar vacío para no cambiarla)</span>}
-              </label>
+              <label className="label">Nombre completo</label>
               <input
-                type="password"
                 className="input"
-                required={!editing}
-                minLength={6}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                value={form.nombre}
+                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
+            </div>
+
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">Correo</label>
+                <input
+                  type="email"
+                  className="input"
+                  value={form.correo}
+                  onChange={(e) => setForm({ ...form, correo: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Teléfono</label>
+                <input
+                  className="input"
+                  value={form.telefono}
+                  onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="mb-5">

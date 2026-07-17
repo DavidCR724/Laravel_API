@@ -21,9 +21,12 @@ class UpdateUserRequest extends FormRequest
     {
         $userId = $this->route('user');
 
+        // El admin edita datos de perfil, rol y estado, pero NO la contraseña.
         return [
             'user'     => ['sometimes', 'required', 'string', 'max:255', Rule::unique('users', 'user')->ignore($userId)],
-            'password' => ['sometimes', 'required', 'string', 'min:6', 'max:255'],
+            'nombre'   => ['sometimes', 'nullable', 'string', 'max:255'],
+            'correo'   => ['sometimes', 'nullable', 'email', 'max:255', Rule::unique('users', 'correo')->ignore($userId)],
+            'telefono' => ['sometimes', 'nullable', 'string', 'max:30'],
             'rol'      => ['sometimes', 'required', 'string', 'max:50'],
             'activo'   => ['sometimes', 'boolean'],
         ];
@@ -35,7 +38,8 @@ class UpdateUserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'user.unique' => 'El nombre de usuario ya está en uso.',
+            'user.unique'   => 'El nombre de usuario ya está en uso.',
+            'correo.unique' => 'El correo ya está en uso.',
         ];
     }
 
@@ -46,7 +50,9 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'user'     => 'nombre de usuario',
-            'password' => 'contraseña',
+            'nombre'   => 'nombre completo',
+            'correo'   => 'correo',
+            'telefono' => 'teléfono',
             'rol'      => 'rol',
         ];
     }

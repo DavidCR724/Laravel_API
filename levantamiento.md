@@ -122,7 +122,35 @@ donde corre el backend:
 Inicia sesión con `admin` / `admin123`. Solo el rol `admin` puede entrar a
 este panel; cualquier otro rol es rechazado a propósito.
 
-## 3. Problemas comunes
+> Nota: el alta de usuarios ya **no** se hace desde el panel. Los clientes se
+> registran desde la app móvil; el admin solo edita, bloquea o elimina, y no
+> cambia contraseñas.
+
+## 3. App móvil (cliente) — React Native + Expo
+
+Carpeta `mobile/`. Es la app del lado del cliente (invitado o cliente): ver
+catálogo y reseñas, carrito, compras, reseñar lo comprado, y IA
+(recomendaciones + chatbot). Ver `mobile/README.md` para el detalle.
+
+### Requisitos
+
+- **Node.js 18+** y la app **Expo Go** en el teléfono (o un emulador).
+- El backend Laravel corriendo con `--host=0.0.0.0` (para que el teléfono lo
+  alcance en la red Wi-Fi).
+
+### Pasos
+
+```bash
+cd mobile
+npm install
+npx expo start        # escanea el QR con Expo Go
+```
+
+En la app: pestaña **Cuenta → Servidor de la API**, escribe `http://TU_IP:8000`
+(la IP de la PC donde corre Laravel, NO `localhost`) y guarda. Usuarios de
+prueba: `cliente` / `cliente123`, o `cliente1`…`cliente10` / `password`.
+
+## 4. Problemas comunes
 
 - **403 "No tienes permiso para realizar esta acción"** en Estadísticas o
   Historial de ventas: esa persona del equipo no bajó los últimos cambios de

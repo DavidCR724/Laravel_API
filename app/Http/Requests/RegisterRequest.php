@@ -21,6 +21,9 @@ class RegisterRequest extends FormRequest
     {
         return [
             'user'     => ['required', 'string', 'max:255', 'unique:users,user'],
+            'nombre'   => ['required', 'string', 'max:255'],
+            'correo'   => ['required', 'email', 'max:255', 'unique:users,correo'],
+            'telefono' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
         ];
     }
@@ -31,7 +34,8 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'user.unique' => 'El nombre de usuario ya está en uso.',
+            'user.unique'   => 'El nombre de usuario ya está en uso.',
+            'correo.unique' => 'El correo ya está registrado.',
         ];
     }
 
@@ -42,6 +46,9 @@ class RegisterRequest extends FormRequest
     {
         return [
             'user'     => 'nombre de usuario',
+            'nombre'   => 'nombre completo',
+            'correo'   => 'correo',
+            'telefono' => 'teléfono',
             'password' => 'contraseña',
         ];
     }
