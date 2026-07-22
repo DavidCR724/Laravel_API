@@ -18,13 +18,17 @@ class Purchase extends Model
         'user_id',
         'total',
         'estado',
+        'metodo_pago',
+        'referencia_pago',
+        'pagado_at',
     ];
 
     /**
      * @var array<string, string>
      */
     protected $casts = [
-        'total' => 'decimal:2',
+        'total'     => 'decimal:2',
+        'pagado_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

@@ -23,7 +23,7 @@ class StoreAdminPurchaseRequest extends FormRequest
     {
         return [
             'user_id'            => ['required', 'integer', 'exists:users,id'],
-            'estado'             => ['sometimes', Rule::in(['pendiente', 'completado', 'cancelado'])],
+            'estado'             => ['sometimes', Rule::in(['pendiente', 'pendiente_pago', 'pagado', 'en_transito', 'completado', 'cancelado'])],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.article_id' => ['required', 'integer', 'exists:articles,id'],
             'items.*.cantidad'   => ['required', 'integer', 'min:1'],

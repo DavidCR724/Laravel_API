@@ -136,6 +136,13 @@ Carpeta `mobile/`. Es la app del lado del cliente (invitado o cliente): ver
 catálogo y reseñas, carrito, compras, reseñar lo comprado, y IA
 (recomendaciones + chatbot). Ver `mobile/README.md` para el detalle.
 
+Al finalizar la compra hay una **pasarela de pagos simulada** con dos formas de
+pago: **tarjeta** (formulario simulado) y **efectivo** (genera un **código de
+barras** tipo OXXO Pay). El pedido pasa por los estados
+`pendiente_pago → pagado → en_transito → completado` (o `cancelado`); desde
+**Mis pedidos** el cliente puede confirmar un pago pendiente, y el admin avanza
+el envío desde el panel. Nada se cobra de verdad: todo el flujo es simulado.
+
 ### Requisitos
 
 - **Node.js 18+** y la app **Expo Go** en el teléfono (o un emulador).

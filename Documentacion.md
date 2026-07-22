@@ -362,6 +362,38 @@ Detalles importantes:
   del producto cambia después, la compra histórica no se altera.
 - Tras comprar, el carrito se **vacía** (`items()->delete()` y `costo_total = 0`).
 
+#### Pasarela de pagos (simulada) y estados del pedido
+
+El checkout exige una **forma de pago** (`metodo_pago`) y el pedido nace en
+estado `pendiente_pago`. El **ciclo de estados** es:
+
+```
+pendiente_pago → pagado → en_transito → completado        (y cancelado en cualquier punto)
+```
+
+Dos formas de pago, **ambas simuladas** (no se cobra nada real):
+
+- **`efectivo`** (estilo *OXXO Pay*): el `store` genera una **referencia
+  numérica de 14 dígitos** (`referencia_pago`) que la app móvil pinta como
+  **código de barras**. El cliente "paga en tienda" y el pago se confirma
+  después.
+- **`tarjeta`**: la app muestra un formulario de tarjeta (datos **no** se envían
+  ni se guardan) y confirma el cobro.
+
+La confirmación del pago es un endpoint aparte:
+
+```php
+// POST /api/purchases/{id}/pay  (cliente dueño del pedido)
+// Solo si sigue 'pendiente_pago'; si no → 422.
+$purchase->update(['estado' => 'pagado', 'pagado_at' => now()]);
+```
+
+Sirve para las dos formas de pago (tarjeta y "ya pagué" del efectivo). A partir
+de `pagado`, el **admin** hace avanzar el pedido a `en_transito` (enviado) y
+`completado` (entregado) desde el panel, vía `PUT /api/admin/purchases/{id}`
+(`adminUpdate`). Columnas nuevas en `purchases`: `metodo_pago`,
+`referencia_pago`, `pagado_at`.
+
 ### 9.6 `ReviewController` (reseñas)
 CRUD de reseñas. `index`/`show` públicos (filtrables por `?article_id=` o por
 `articles/{article}/reviews`); crear es de cliente, editar/borrar de cliente o
@@ -622,9 +654,16 @@ POST /api/login    { user, password }  → devuelve token
 2. POST /api/cart-items     { cart_id, article_id }    → agrega item + recalcula total
    (repetir para más productos)
 3. GET  /api/carts/{id}                                → ver carrito con total
-4. POST /api/purchases      { cart_id }                → checkout: crea la compra,
-                                                          copia items, vacía el carrito
+4. POST /api/purchases      { cart_id, metodo_pago }   → checkout: crea el pedido en
+                                                          'pendiente_pago', copia items,
+                                                          vacía el carrito. Si es efectivo,
+                                                          genera referencia_pago (código de barras)
+5. POST /api/purchases/{id}/pay                        → confirma el pago (simulado) → 'pagado'
+   (tarjeta, o "ya pagué" del efectivo tipo OXXO Pay)
 ```
+
+El **admin** hace avanzar luego el pedido: `pagado → en_transito → completado`
+(vía `PUT /api/admin/purchases/{id}` con `{ estado }`).
 
 ### 16.3 Gestión de un admin
 ```
@@ -673,9 +712,12 @@ Todos bajo el prefijo `/api`, respuestas JSON.
 | PUT / DELETE | `/reviews/{id}` | Editar / borrar reseña | Cliente o Admin |
 | GET / POST / PUT / DELETE | `/carts…`, `/cart-items…` | Carrito | Cliente |
 | GET | `/carts/{cart}/items` | Items de un carrito | Cliente |
-| POST | `/purchases` | Crear compra (checkout) | Cliente |
+| POST | `/purchases` | Checkout: crea pedido `pendiente_pago` con `metodo_pago` (`efectivo`/`tarjeta`) | Cliente |
+| POST | `/purchases/{id}/pay` | Confirmar pago (simulado) → `pagado` | Cliente (dueño) |
 | DELETE | `/purchases/{id}` | Borrar compra | Cliente |
 | GET | `/purchases`, `/purchases/{id}` | Ver historial de compras | Cliente (las suyas) o Admin (todas) |
+| POST / PUT / PATCH | `/admin/purchases…`, `/admin/purchases/{id}` | Crear/editar pedido y avanzar estado (`pagado→en_transito→completado`) | Admin |
+| PATCH | `/admin/purchases/{id}/cancel` | Cancelar pedido | Admin |
 | POST | `/ai/search` | Búsqueda semántica del catálogo (IA) | Público |
 | GET | `/ai/recommendations` | Recomendaciones personalizadas (IA) | Cliente |
 | POST | `/ai/chat` | Chatbot de la tienda (IA) | Público |

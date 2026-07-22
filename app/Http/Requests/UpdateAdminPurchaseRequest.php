@@ -25,7 +25,7 @@ class UpdateAdminPurchaseRequest extends FormRequest
     {
         return [
             'user_id'            => ['sometimes', 'integer', 'exists:users,id'],
-            'estado'             => ['sometimes', Rule::in(['pendiente', 'completado', 'cancelado'])],
+            'estado'             => ['sometimes', Rule::in(['pendiente', 'pendiente_pago', 'pagado', 'en_transito', 'completado', 'cancelado'])],
             'items'              => ['sometimes', 'array', 'min:1'],
             'items.*.article_id' => ['required_with:items', 'integer', 'exists:articles,id'],
             'items.*.cantidad'   => ['required_with:items', 'integer', 'min:1'],

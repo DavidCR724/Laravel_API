@@ -9,6 +9,7 @@ use App\Models\Article;
 use App\Models\Cart;
 use App\Models\Purchase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseController extends Controller
@@ -25,20 +26,30 @@ class PurchaseController extends Controller
      * POST /api/purchases — Genera una compra a partir de un carrito (checkout).
      *
      * Copia los artículos del carrito a la compra (guardando el costo del
-     * momento), calcula el total y vacía el carrito.
+     * momento), calcula el total y vacía el carrito. El pedido nace en estado
+     * 'pendiente_pago' con la forma de pago elegida:
+     *   - efectivo: se genera una referencia numérica (para un código de barras
+     *     tipo OXXO Pay) y el pago se confirma después vía POST .../pay.
+     *   - tarjeta : el cobro también se confirma vía POST .../pay (simulado).
      */
     public function store(StorePurchaseRequest $request): JsonResponse
     {
-        $cart = Cart::with('items.article')->findOrFail($request->validated()['cart_id']);
+        $data = $request->validated();
+        $cart = Cart::with('items.article')->findOrFail($data['cart_id']);
 
         if ($cart->items->isEmpty()) {
             abort(JsonResponse::HTTP_UNPROCESSABLE_ENTITY, 'El carrito está vacío; no se puede generar la compra.');
         }
 
-        $purchase = DB::transaction(function () use ($cart) {
+        $metodo = $data['metodo_pago'];
+
+        $purchase = DB::transaction(function () use ($cart, $metodo) {
             $purchase = Purchase::create([
-                'user_id' => $cart->user_id,
-                'total'   => 0,
+                'user_id'         => $cart->user_id,
+                'total'           => 0,
+                'estado'          => 'pendiente_pago',
+                'metodo_pago'     => $metodo,
+                'referencia_pago' => $metodo === 'efectivo' ? $this->generarReferencia() : null,
             ]);
 
             $total = 0.0;
@@ -58,7 +69,7 @@ class PurchaseController extends Controller
 
             $purchase->update(['total' => round($total, 2)]);
 
-            // Vacía el carrito tras la compra.
+            // Vacía el carrito tras generar el pedido.
             $cart->items()->delete();
             $cart->update(['costo_total' => 0]);
 
@@ -66,9 +77,45 @@ class PurchaseController extends Controller
         });
 
         return response()->json([
-            'message' => 'Compra realizada correctamente.',
+            'message' => 'Pedido generado. Falta confirmar el pago.',
             'data'    => $purchase->load('items.article'),
         ], JsonResponse::HTTP_CREATED);
+    }
+
+    /**
+     * POST /api/purchases/{id}/pay — Confirma el pago del pedido (SIMULADO).
+     *
+     * Sirve tanto para el pago con tarjeta como para el pago en efectivo
+     * (cuando el cliente "paga" en tienda con el código de barras). Solo el
+     * dueño del pedido puede pagarlo y solo si sigue 'pendiente_pago'. No se
+     * procesa ninguna tarjeta real: cualquier dato de tarjeta se ignora.
+     */
+    public function pay(Request $request, $id): JsonResponse
+    {
+        $purchase = Purchase::where('user_id', $request->user()->id)->findOrFail($id);
+
+        if ($purchase->estado !== 'pendiente_pago') {
+            abort(JsonResponse::HTTP_UNPROCESSABLE_ENTITY, 'Este pedido ya no está pendiente de pago.');
+        }
+
+        $purchase->update([
+            'estado'    => 'pagado',
+            'pagado_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Pago confirmado correctamente.',
+            'data'    => $purchase->load('items.article'),
+        ]);
+    }
+
+    /**
+     * Genera una referencia numérica de 14 dígitos para el pago en efectivo
+     * (respalda el "código de barras" tipo OXXO Pay que se muestra al cliente).
+     */
+    private function generarReferencia(): string
+    {
+        return (string) mt_rand(1, 9) . str_pad((string) mt_rand(0, 9999999999999), 13, '0', STR_PAD_LEFT);
     }
 
     /**

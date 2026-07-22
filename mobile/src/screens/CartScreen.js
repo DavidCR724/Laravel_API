@@ -53,8 +53,7 @@ function AiRecommendations({ count, onOpen, onAdd }) {
 
 export default function CartScreen({ navigation }) {
   const { isAuthenticated } = useAuth()
-  const { items, total, count, loading, remove, checkout, add, refresh } = useCart()
-  const [working, setWorking] = useState(false)
+  const { items, total, count, loading, remove, add, refresh } = useCart()
 
   useEffect(() => {
     if (isAuthenticated) refresh()
@@ -77,19 +76,8 @@ export default function CartScreen({ navigation }) {
 
   if (loading && count === 0) return <Loading text="Cargando carrito…" />
 
-  async function handleCheckout() {
-    setWorking(true)
-    try {
-      await checkout()
-      Alert.alert('¡Compra realizada!', 'Tu pedido se registró correctamente.', [
-        { text: 'Ver mis pedidos', onPress: () => navigation.navigate('Orders') },
-        { text: 'Seguir comprando' },
-      ])
-    } catch (err) {
-      Alert.alert('Error', err.message || 'No se pudo completar la compra.')
-    } finally {
-      setWorking(false)
-    }
+  function handleCheckout() {
+    navigation.navigate('Payment')
   }
 
   async function handleAddRec(article) {
@@ -156,7 +144,7 @@ export default function CartScreen({ navigation }) {
             <Text style={{ fontSize: 22, fontWeight: '800', color: colors.leatherDark }}>{money(total)}</Text>
           </View>
 
-          <Button title="Finalizar compra" onPress={handleCheckout} loading={working} icon={<Ionicons name="bag-check" size={18} color={colors.leatherDark} />} />
+          <Button title="Proceder al pago" onPress={handleCheckout} icon={<Ionicons name="card" size={18} color={colors.leatherDark} />} />
         </>
       )}
 

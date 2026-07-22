@@ -60,12 +60,26 @@ export function CartProvider({ children }) {
     [refresh]
   )
 
-  const checkout = useCallback(async () => {
-    if (!cart?.id) throw new Error('Tu carrito está vacío.')
-    const { data } = await api.post('/api/purchases', { cart_id: cart.id })
-    await refresh()
+  // Genera el pedido a partir del carrito con la forma de pago elegida
+  // ('efectivo' o 'tarjeta'). El pedido nace 'pendiente_pago'; el cobro se
+  // confirma después con pay(). Devuelve el pedido creado (incluye la
+  // referencia del código de barras cuando es efectivo).
+  const checkout = useCallback(
+    async (metodoPago) => {
+      if (!cart?.id) throw new Error('Tu carrito está vacío.')
+      const { data } = await api.post('/api/purchases', { cart_id: cart.id, metodo_pago: metodoPago })
+      await refresh()
+      return data.data
+    },
+    [cart, refresh]
+  )
+
+  // Confirma el pago (simulado) de un pedido pendiente. Sirve para tarjeta y
+  // para efectivo (cuando el cliente "paga" en tienda con el código de barras).
+  const pay = useCallback(async (purchaseId) => {
+    const { data } = await api.post(`/api/purchases/${purchaseId}/pay`)
     return data.data
-  }, [cart, refresh])
+  }, [])
 
   const items = cart?.items || []
 
@@ -80,8 +94,9 @@ export function CartProvider({ children }) {
       add,
       remove,
       checkout,
+      pay,
     }),
-    [cart, items, loading, refresh, add, remove, checkout]
+    [cart, items, loading, refresh, add, remove, checkout, pay]
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

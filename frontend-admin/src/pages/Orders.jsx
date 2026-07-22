@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Ban, Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Ban, CheckCircle, Eye, Pencil, Plus, Trash2, Truck, X } from 'lucide-react'
 import api from '../api/client'
 import Modal from '../components/Modal'
 
@@ -12,23 +12,37 @@ function formatDate(value) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString('es-MX')
 }
 
-const ESTADOS = ['pendiente', 'completado', 'cancelado']
+const ESTADOS = ['pendiente_pago', 'pagado', 'en_transito', 'completado', 'cancelado']
 
 const ESTADO_STYLES = {
+  pendiente_pago: 'bg-amber-100 text-amber-700',
   pendiente: 'bg-amber-100 text-amber-700',
+  pagado: 'bg-sky-100 text-sky-700',
+  en_transito: 'bg-indigo-100 text-indigo-700',
   completado: 'bg-emerald-100 text-emerald-700',
   cancelado: 'bg-rose-100 text-rose-700',
 }
 
+const ESTADO_LABEL = {
+  pendiente_pago: 'Pendiente de pago',
+  pendiente: 'Pendiente',
+  pagado: 'Pagado',
+  en_transito: 'En tránsito',
+  completado: 'Completado',
+  cancelado: 'Cancelado',
+}
+
+const METODO_LABEL = { efectivo: 'Efectivo', tarjeta: 'Tarjeta' }
+
 function EstadoBadge({ estado }) {
   return (
     <span className={`badge ${ESTADO_STYLES[estado] || 'bg-denim/10 text-denim'}`}>
-      {estado || '—'}
+      {ESTADO_LABEL[estado] || estado || '—'}
     </span>
   )
 }
 
-const EMPTY_FORM = { user_id: '', estado: 'completado', items: [] }
+const EMPTY_FORM = { user_id: '', estado: 'pendiente_pago', items: [] }
 
 // Suma de (costo unitario * cantidad) de todas las líneas.
 function computeTotal(items) {
@@ -83,7 +97,7 @@ export default function Orders() {
     setEditing(p)
     setForm({
       user_id: p.user_id,
-      estado: p.estado || 'completado',
+      estado: p.estado || 'pendiente_pago',
       items: (p.items || []).map((it) => ({
         article_id: it.article_id,
         cantidad: it.cantidad ?? 1,
@@ -151,6 +165,16 @@ export default function Orders() {
       setFormError(err.message || 'No se pudo guardar el pedido.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Avanza el estado del pedido (p. ej. pagado -> en_transito -> completado).
+  async function setEstado(p, estado) {
+    try {
+      await api.put(`/api/admin/purchases/${p.id}`, { estado })
+      load()
+    } catch (err) {
+      alert(err.message || 'No se pudo actualizar el estado.')
     }
   }
 
@@ -226,6 +250,24 @@ export default function Orders() {
                     <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} title="Editar">
                       <Pencil size={14} />
                     </button>
+                    {p.estado === 'pagado' && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setEstado(p, 'en_transito')}
+                        title="Marcar en tránsito"
+                      >
+                        <Truck size={14} />
+                      </button>
+                    )}
+                    {p.estado === 'en_transito' && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setEstado(p, 'completado')}
+                        title="Marcar entregado"
+                      >
+                        <CheckCircle size={14} />
+                      </button>
+                    )}
                     <button
                       className="btn btn-secondary btn-sm"
                       onClick={() => handleCancel(p)}
@@ -399,6 +441,16 @@ export default function Orders() {
               <p className="text-xs uppercase tracking-wide text-leather-dark/50">Total</p>
               <p className="font-serif text-lg font-bold">{money(detail.total)}</p>
             </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-leather-dark/50">Forma de pago</p>
+              <p className="font-medium">{METODO_LABEL[detail.metodo_pago] || '—'}</p>
+            </div>
+            {detail.referencia_pago && (
+              <div>
+                <p className="text-xs uppercase tracking-wide text-leather-dark/50">Referencia</p>
+                <p className="font-mono text-sm">{detail.referencia_pago}</p>
+              </div>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-leather/10">

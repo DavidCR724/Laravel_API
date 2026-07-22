@@ -118,6 +118,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('cart-items', CartItemController::class);
 
         Route::post('purchases', [PurchaseController::class, 'store']);
+        // Confirma el pago (simulado) del pedido: tarjeta o efectivo tipo OXXO Pay.
+        Route::post('purchases/{id}/pay', [PurchaseController::class, 'pay'])->whereNumber('id');
         Route::delete('purchases/{id}', [PurchaseController::class, 'destroy'])->whereNumber('id');
     });
 

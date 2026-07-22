@@ -9,6 +9,7 @@ import AccountScreen from '../screens/AccountScreen'
 import LoginScreen from '../screens/LoginScreen'
 import RegisterScreen from '../screens/RegisterScreen'
 import OrdersScreen from '../screens/OrdersScreen'
+import PaymentScreen from '../screens/PaymentScreen'
 import { useCart } from '../context/CartContext'
 import { colors } from '../theme'
 
@@ -64,6 +65,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar sesión' }} />
       <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Crear cuenta' }} />
       <Stack.Screen name="Orders" component={OrdersScreen} options={{ title: 'Mis pedidos' }} />
+      <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: 'Pago' }} />
     </Stack.Navigator>
   )
 }
